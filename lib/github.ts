@@ -58,29 +58,28 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
   // 1. Fetch user profile
   const { data: user } = await octokit.rest.users.getByUsername({ username });
 
-  let linkedinUrl = '';
-  if (user.blog && user.blog.includes('linkedin.com')) {
-    linkedinUrl = user.blog;
-  } else if (user.bio && user.bio.includes('linkedin.com')) {
-    const match = user.bio.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s]+/);
-    if (match) linkedinUrl = match[0];
+  function extractUrl(text: string, domain: string): string {
+    const patterns = [
+      new RegExp(`https?://(?:www\\.)?${domain}\\/[^\\s,)]+`, 'i'),
+      new RegExp(`(?:https?://)?(?:www\\.)?${domain}\\/[^\\s,)]+`, 'i'),
+    ];
+    for (const pat of patterns) {
+      const m = text.match(pat);
+      if (m) {
+        let url = m[0];
+        if (!url.startsWith('http')) url = `https://${url}`;
+        return url;
+      }
+    }
+    return '';
   }
 
-  let leetcodeUrl = '';
-  if (user.blog && user.blog.includes('leetcode.com')) {
-    leetcodeUrl = user.blog;
-  } else if (user.bio && user.bio.includes('leetcode.com')) {
-    const match = user.bio.match(/https?:\/\/(?:www\.)?leetcode\.com\/[^\s]+/);
-    if (match) leetcodeUrl = match[0];
-  }
+  const bioText = [user.blog || '', user.bio || ''].join(' ');
+  let linkedinUrl = extractUrl(bioText, 'linkedin\\.com');
+  let leetcodeUrl = extractUrl(bioText, 'leetcode\\.com');
+  let instagramUrl = extractUrl(bioText, 'instagram\\.com');
 
-  let instagramUrl = '';
-  if (user.blog && user.blog.includes('instagram.com')) {
-    instagramUrl = user.blog;
-  } else if (user.bio && user.bio.includes('instagram.com')) {
-    const match = user.bio.match(/https?:\/\/(?:www\.)?instagram\.com\/[^\s]+/);
-    if (match) instagramUrl = match[0];
-  } else {
+  if (!instagramUrl) {
     const igUsername = user.bio?.match(/ig:\s*@?([a-zA-Z0-9_.]+)/i);
     if (igUsername) instagramUrl = `https://instagram.com/${igUsername[1]}`;
   }
@@ -93,16 +92,25 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
   });
 
   const repos: RepoData[] = [];
-  const languages: Record<string, number> = {};
+  const languageBytes: Record<string, number> = {};
+  const reposToAssess = reposRaw.filter(r => !r.fork).slice(0, 15);
+  const totalStars = reposToAssess.reduce((acc, r) => acc + (r.stargazers_count || 0), 0);
 
-  const totalStars = reposRaw.reduce((acc, r) => acc + (r.stargazers_count || 0), 0);
-
-  // Limit to at most 15 most recent repos to avoid massive context and rate limits
-  const recentRepos = reposRaw.filter(r => !r.fork).slice(0, 15);
-  
-  for (const r of recentRepos) {
-    if (r.language) {
-      languages[r.language] = (languages[r.language] || 0) + 1;
+  for (const r of reposToAssess) {
+    // Fetch actual language byte counts per repo for accurate distribution
+    try {
+      const { data: langs } = await octokit.rest.repos.listLanguages({
+        owner: username,
+        repo: r.name,
+      });
+      for (const [lang, bytes] of Object.entries(langs)) {
+        languageBytes[lang] = (languageBytes[lang] || 0) + bytes;
+      }
+    } catch {
+      // fallback: use primary language with a nominal byte count
+      if (r.language) {
+        languageBytes[r.language] = (languageBytes[r.language] || 0) + 1;
+      }
     }
 
     let readmeContent = '';
@@ -117,8 +125,7 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
           },
         });
         hasReadme = true;
-        // Truncate readme to avoid too much text
-        readmeContent = (readmeRaw as unknown as string).substring(0, 1500) + '...';
+        readmeContent = (readmeRaw as unknown as string).substring(0, 1500);
       }
     } catch (e) {
       // no readme
@@ -198,6 +205,6 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
     totalPrs,
     repos,
     pullRequests: prs,
-    languages,
+    languages: languageBytes,
   };
 }

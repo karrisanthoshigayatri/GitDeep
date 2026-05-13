@@ -90,6 +90,9 @@ export async function generateAssessment(
       model: 'gemini-2.5-flash', // A standard model for text tasks
       contents: prompt,
       config: {
+        temperature: 0,
+        topP: 1,
+        topK: 1,
         systemInstruction: "You are an expert tech recruiter and senior engineering manager evaluating a candidate's GitHub profile. YOU MUST OUTPUT ONLY VALID MINIFIED JSON. NO MARKDOWN OR HTML WRAPPERS.",
         responseMimeType: "application/json",
         responseSchema: {
@@ -205,6 +208,9 @@ export async function generateAssessment(
         prompt: prompt,
         system: "You are an expert tech recruiter and senior engineering manager evaluating a candidate's GitHub profile. YOU MUST OUTPUT ONLY VALID MINIFIED JSON. NO MARKDOWN OR HTML WRAPPERS.",
         stream: false,
+        options: {
+          temperature: 0
+        },
         format: 'json'
       })
     });
@@ -237,20 +243,34 @@ function buildPrompt(data: UserAssessmentData, mode: AssessmentMode, customQuest
       username: data.username,
       bio: data.bio,
       company: data.company,
+      location: data.location,
       blog: data.blog,
+      email: data.email,
+      twitterUsername: data.twitterUsername,
+      hireable: data.hireable,
       followers: data.followers,
+      following: data.following,
       publicRepos: data.publicRepos,
       createdAt: data.createdAt,
+      totalStars: data.totalStars,
+      totalMergedPRs: data.totalPrs,
     },
     topLanguages: data.languages,
     recentRepos: data.repos.map(r => ({
       name: r.name,
+      url: r.url,
       description: r.description,
       stars: r.stars,
+      forks: r.forks,
       language: r.language,
+      topics: r.topics,
+      isFork: r.isFork,
       hasReadme: r.hasReadme,
       readmeSnippet: r.readmeContent,
-      topics: r.topics
+      hasLicense: r.hasLicense,
+      licenseName: r.licenseName,
+      defaultBranch: r.defaultBranch,
+      updatedAt: r.updatedAt
     })),
     pullRequestsInOtherRepos: data.pullRequests
   }, null, 2);
@@ -263,13 +283,13 @@ Please adhere to these overarching assessment logic rules:
 1. Slope Detection: Calculate the trajectory of their career based on their code (from account creation to recent activity). Is it a Rising Star, Steady Maintainer, Declining Activity, or Sporadic/Spiky? Analyze burnout risk based on their activity volumes.
 2. Buzzword to Reality Ratio: Compare hype words (AI, LLM, Web3, etc.) in their bio/readmes against the ACTUAL tech stack they write in (based on language stats and repo contents). Is it all hype, or accurate representation? Provide a cheeky roast or praise based on this.
 3. Arrogance vs Confidence: Analyze their vibe (PRs, Readmes, bio). Confidence is assertive but helpful ("Please follow guidelines", owning mistakes). Arrogance is condescending ("This is the ONLY right way", toxic). Classify behavioral flags and assign a vibe check.
-4. AI SLOP & Generic Code Detection: Scrutinize their AI usage. Look for common AI slop: excessive slash comments, generic AI CSS (e.g., generic purple/blue gradients, cookie-cutter Tailwind patterns), broken links, stylistic imbalances across the project, heavy use of emojis in readmes, and buzzword salads lacking technical depth. Assess if they use AI effectively vs lazily.
+4. AI Usage Quality (DISTINGUISH SLOP FROM ORCHESTRATION): Scrutinize their AI usage. Look for common AI slop: excessive slash comments, generic AI CSS (e.g., generic purple/blue gradients, cookie-cutter Tailwind patterns), broken links, stylistic imbalances across the project, heavy use of emojis in readmes, and buzzword salads lacking technical depth. HOWEVER, you MUST also detect when a developer uses AI heavily but with HIGH QUALITY — look for signs of tech stack awareness, architectural understanding, intentional tech choices, and ability to guide AI toward production-grade output. If the developer shows this superior orchestration, call it out explicitly. Add a "### 🤖 AI Partnership Assessment" section in the detailedReport highlighting this as a strength. This should positively influence 'potential', 'aiUsage' metrics, and 'hirabilityScore'.
 5. Missing documentation: Search for repos lacking READMEs or descriptions. Flag projects that don't look production-ready.
 6. Check for mentions of data security in their projects.
 7. Credit creative/new ideas.
 8. Look at what they contributed to vs what is just in their repo. Evaluate their merged PRs.
 9. Profile tags: Extrapolate multiple tags to describe the developer's archetype (e.g. Frontend Dev, Vibe Coder, Backend, Cybersecurity, etc).
-10. SWOT analysis: Detail their Strengths, Weaknesses, Opportunities, and Threats. Provide 3-4 bullet points each. Keep them concise.
+10. SWOT analysis: Detail their Strengths, Weaknesses, Opportunities, and Threats. Provide 3-4 bullet points each. Keep them concise. NEVER leave any SWOT field empty — always populate all four. Opportunities are EXTERNAL market/role factors the dev could leverage (industries they'd suit, roles they fit, tech trends they can ride), NOT self-improvement tips. MODE-SPECIFIC: In employer mode, Weaknesses and Threats must dominate with no improvement framing, and Opportunities should describe where this candidate could add value or fit in the market. In developer mode, Opportunities should contain actionable growth advice and learning paths.
 11. Timeline & Growth Meter: Assess their timeline from github creation until now. Create phases (e.g. Student -> Extracurricular -> Professional). Add a few short lines for each phase. Evaluate their consistency over this timeline to calculate a growthMeter (percentage 0-100) reflecting their growth and potential.
 12. Hirability Criteria: Expand criteria to differentiate between internships and full-time roles. A student or junior might be worthy of an internship but not full-time. Clearly specify levels in 'hirabilityRoles' and 'notSuitedRoles'.
 13. Formatting & Nuance (CRITICAL):
@@ -278,9 +298,32 @@ Please adhere to these overarching assessment logic rules:
     - KEEP THE DETAILED REPORT PUNCHY AND CONCISE. DO NOT write walls of text. Use bullet points heavily.
     - If you mention the user's handle or other developers, format it as a clickable markdown link: \`[@username](https://github.com/username)\`.
     - If a detail seems negative at first glance (e.g., massive AI usage, unconventional structure) but is actually brilliant or implies high leverage/orchestration when dug deeper, you MUST highlight this nuance in the 'detailedReport' using ***bold and italic*** markdown. For example: "***While the project is heavily assisted by AI, their ability to orchestrate complex tools effectively to achieve a production-grade result puts them leagues above their peers.***"
+14. STRUCTURED REPORT FORMAT (CRITICAL):
+    - Use \`##\` headers for each major topic, \`###\` for sub-topics.
+    - Separate distinct sections with \`---\` horizontal dividers.
+    - Use \`> **NOTE:**\` callout blocks for important observations that need emphasis.
+    - Prefix warnings with \`⚠️\`, positive findings with \`✅\`, and deep-dive insights with \`🔍\`.
+    - Use **bold** for key metrics/numbers, and ***bold italic*** for critical nuance callouts.
+    - Add 2 blank lines after each sub-topic section to create visual breathing room.
+15. PER-REPO ASSESSMENT:
+    - For each repo in 'recentRepos', populate a 'repoAssessments' entry.
+    - Evaluate each repo independently on: code quality, documentation quality, tech stack relevance, architecture decisions, AI slop presence, and production-readiness.
+    - Score each repo 1.0-10.0 independently.
+    - Provide a verdict string ("Excellent", "Good", "Needs Work", "Red Flag"), 2-3 sentence analysis, key highlights, and red flags.
+    - This appears in the structured JSON output under 'repoAssessments'.
+    - IMPORTANT: The 'detailedReport' field must NOT repeat per-repo breakdowns. They already exist in 'repoAssessments'. Keep detailedReport focused on the overall account-level assessment only.
+16. SCORE STABILITY AND CONSISTENCY (CRITICAL — OVERRIDES ALL SUBJECTIVITY):
+    - Your 'hirabilityScore' MUST use this FIXED 3-TIER BAND SYSTEM. Pick the tier first, THEN assign a score within it:
+      * TIER 1 (1-4) — WEAK: No merged PRs, repos are forks/tutorials/stale, no docs, buzzword-heavy bio with no code to back it up, heavy AI slop.
+      * TIER 2 (5-7) — AVERAGE: Some original repos, a few merged PRs, mixed documentation quality, reasonable tech stack, moderate activity. NOTE: 7.0 is BANNED — use 6.9 or 7.1 instead.
+      * TIER 3 (8-10) — STRONG: Multiple merged PRs in external repos, well-documented original projects, consistent activity over 6+ months, coherent tech stack matching bio claims, minimal slop.
+    - LOGIC: The tier is determined by the presence or absence of 3 hard signals: (a) merged PRs in other people's repos, (b) original non-fork repos with READMEs, (c) >6 months of consistent activity. 0/3 = Tier 1, 1/3 = Tier 2, 2-3/3 = Tier 3. THEN fine-tune ±0.5 within the band based on subjective quality. This guarantees a deviation of at most 0.5 between evaluations.
+    - CRITICAL: A score deviation of more than ±1.0 between two evaluations of the SAME profile is UNACCEPTABLE. The band system guarantees this. Do not override the bands.
+    - NEVER give a score of exactly 7.0. Skip it. Use 6.9 or 7.1 instead.
+    - Do NOT let writing style, vibes, or subjective impressions affect the score. Only the 3-signal band logic above.
 
-Your role:
-${mode === 'employer' ? "You are an employer reviewing this profile. Provide a BRUTAL, highly critical assessment." : "You are evaluating this from the Developer's point of view to help them improve. Be constructive but critical."}
+Your role (MODE-SPECIFIC — follow exactly):
+${mode === 'employer' ? "You are an employer reviewing this candidate for hiring. BE BRUTALLY HONEST and unforgiving. Focus STRICTLY on evaluating the candidate's qualities, failures, deficiencies, and risk factors. Do NOT give any tips, advice, constructive feedback, learning suggestions, or improvement paths — those belong in developer mode only. Weaknesses, red flags, gaps, and shortcomings must dominate the assessment. If strengths exist, mention them briefly, but the primary focus is what disqualifies or risks this candidate. Zero improvement language in summary, detailedReport, timeline, and swot.weaknesses/swot.threats. However, swot.opportunities is for EXTERNAL market positioning (roles they'd fit, industries where their skills match), NOT self-improvement tips — populate it." : "You are a senior mentor evaluating this developer to help them improve. BE CONSTRUCTIVE BUT CRITICAL. Point out flaws honestly but always frame them as actionable growth opportunities. Provide specific tips, learning resources, and a clear improvement path. Tone should be that of a senior mentor giving direct but helpful feedback — honest enough to sting, but framed to motivate growth."}
 
 ${customQuestions ? `The employer has customized questions for you to answer: "${customQuestions}"` : ''}
 

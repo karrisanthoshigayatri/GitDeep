@@ -6,7 +6,7 @@ import { fetchGitHubProfile, UserAssessmentData } from '@/lib/github';
 import { generateAssessment, AssessmentMode, AssessmentResult } from '@/lib/ai';
 import { useStore } from '@/lib/store';
 import { SettingsModal } from '@/components/SettingsModal';
-import { ArrowLeft, Loader2, Send, Linkedin, Twitter, Target, Zap, Shield, AlertTriangle, Code2, Instagram } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, Linkedin, Twitter, Target, Zap, Shield, AlertTriangle, Code2, Instagram, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 
@@ -70,6 +70,58 @@ function AssessmentContent() {
     } finally {
       setAskingQuestion(false);
     }
+  };
+
+  function getTextFromChildren(children: React.ReactNode): string {
+    let text = '';
+    React.Children.forEach(children, (child) => {
+      if (typeof child === 'string') text += child;
+      else if (typeof child === 'number') text += String(child);
+      else if (React.isValidElement(child)) text += getTextFromChildren((child.props as any).children);
+    });
+    return text;
+  }
+
+  const markdownComponents = {
+    p: ({ children, ...props }: any) => {
+      const text = getTextFromChildren(children);
+      if (text?.startsWith('⚠️')) {
+        return <p className="text-[#FF7B72] flex items-start gap-2 text-sm leading-relaxed mb-4"><span>{children}</span></p>;
+      }
+      if (text?.startsWith('✅')) {
+        return <p className="text-[#46E363] flex items-start gap-2 text-sm leading-relaxed mb-4"><span>{children}</span></p>;
+      }
+      if (text?.startsWith('🔍')) {
+        return <p className="text-[#79C0FF] flex items-start gap-2 text-sm leading-relaxed mb-4"><span>{children}</span></p>;
+      }
+      return <p className="text-[#C9D1D9] text-sm leading-relaxed mb-4">{children}</p>;
+    },
+    blockquote: ({ children, ...props }: any) => {
+      const text = getTextFromChildren(children);
+      if (text?.includes('NOTE:')) {
+        return (
+          <blockquote className="border-l-4 border-[#E3B341] bg-[#E3B341]/10 py-3 px-4 rounded-r-lg my-4 text-sm text-[#C9D1D9]">
+            {children}
+          </blockquote>
+        );
+      }
+      return (
+        <blockquote className="border-l-4 border-[#A371F7] bg-[#A371F7]/10 py-2 px-4 rounded-r-lg my-4 text-sm text-[#C9D1D9]">
+          {children}
+        </blockquote>
+      );
+    },
+    h2: ({ children, ...props }: any) => <h2 className="text-sm font-bold text-[#58A6FF] uppercase tracking-widest mb-4 mt-10 first:mt-0 border-b border-[#30363D] pb-2">{children}</h2>,
+    h3: ({ children, ...props }: any) => <h3 className="text-xs font-bold text-[#E3B341] uppercase tracking-wider mb-2 mt-8">{children}</h3>,
+    hr: () => <hr className="border-[#21262D] my-6" />,
+    strong: ({ children, ...props }: any) => {
+      const text = getTextFromChildren(children);
+      const isBoldItalic = props.node?.children?.[0]?.italic;
+      if (isBoldItalic || text?.includes('***')) {
+        return <strong className="bg-[#E3B341]/30 text-[#E3B341] px-1.5 py-0.5 rounded font-bold italic">{children}</strong>;
+      }
+      return <strong className="bg-[#E3B341]/20 text-[#E3B341] px-1.5 py-0.5 rounded font-bold">{children}</strong>;
+    },
   };
 
   if (loading) {
@@ -401,6 +453,44 @@ function AssessmentContent() {
             )}
           </div>
 
+          {/* Per-Repo Assessment */}
+          {assessment.repoAssessments && assessment.repoAssessments.length > 0 && (
+            <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-2xl">
+              <h2 className="text-sm font-bold text-white uppercase tracking-widest font-mono mb-4 flex items-center gap-2">
+                <Code2 className="w-4 h-4 text-[#58A6FF]" /> Per-Repo Assessment
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {assessment.repoAssessments.map((repo, idx) => {
+                  const scoreColor = repo.repoScore >= 7 ? 'text-[#46E363]' : repo.repoScore >= 4 ? 'text-[#E3B341]' : 'text-[#FF7B72]';
+                  const verdictColor = repo.repoScore >= 7 ? 'bg-[#2EA043]/10 border-[#2EA043]/30 text-[#46E363]' : repo.repoScore >= 4 ? 'bg-[#E3B341]/10 border-[#E3B341]/30 text-[#E3B341]' : 'bg-[#F85149]/10 border-[#F85149]/30 text-[#FF7B72]';
+                  return (
+                    <div key={idx} className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4 hover:border-[#8B949E] transition-colors">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Code2 className="w-4 h-4 text-[#8B949E] shrink-0" />
+                          <a
+                            href={`https://github.com/${username}/${repo.repoName}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-bold text-[#58A6FF] hover:underline truncate"
+                          >
+                            {repo.repoName}
+                          </a>
+                          <ExternalLink className="w-3 h-3 text-[#8B949E] shrink-0" />
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-lg font-mono font-black ${scoreColor}`}>{(repo.repoScore ?? 0).toFixed(1)}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${verdictColor}`}>{repo.repoVerdict || 'N/A'}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-[#8B949E] leading-relaxed">{repo.repoAnalysis}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl flex flex-col shadow-2xl overflow-hidden h-full md:min-h-[800px]">
             <div className="p-4 border-b border-[#30363D] bg-[#21262D] sticky top-0 z-10 flex items-center justify-between">
               <h2 className="text-sm font-bold text-white uppercase tracking-widest font-mono">
@@ -409,8 +499,8 @@ function AssessmentContent() {
               <span className="text-[10px] text-[#8B949E] px-2 py-1 bg-[#0D1117] border border-[#30363D] rounded-full">RAW LOG</span>
             </div>
             <div className="p-6 overflow-y-auto w-full custom-scrollbar">
-              <div className="prose prose-invert max-w-none prose-sm prose-headings:font-bold prose-h2:text-sm prose-h2:uppercase prose-h2:tracking-widest prose-h2:text-[#58A6FF] prose-h3:text-xs prose-h3:text-[#8B949E] prose-h3:uppercase prose-h2:border-b-0 prose-h2:mb-4 prose-h2:mt-10 first:prose-h2:mt-0 prose-h3:mb-2 prose-h3:mt-8 hover:prose-a:pointer-events-auto prose-a:text-[#58A6FF] hover:prose-a:underline prose-p:text-[#C9D1D9] prose-p:leading-relaxed prose-p:mb-6 prose-li:text-[#C9D1D9] prose-li:mb-2 prose-code:text-[#E3B341] prose-code:bg-[#0D1117] prose-code:px-1 prose-code:rounded prose-blockquote:border-l-[#A371F7] prose-blockquote:bg-[#A371F7]/10 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:font-normal prose-blockquote:text-[#C9D1D9] prose-blockquote:not-italic prose-strong:bg-[#E3B341]/20 prose-strong:text-[#E3B341] prose-strong:px-1.5 prose-strong:py-0.5 prose-strong:rounded prose-strong:font-bold prose-ul:list-disc prose-ul:pl-4 prose-ul:mb-6 prose-ul:mt-4 prose-ol:list-decimal prose-ol:pl-4 prose-em:text-[#58A6FF] prose-em:not-italic">
-                <ReactMarkdown>{assessment.detailedReport?.replace(/\\n/g, '\n\n') || ''}</ReactMarkdown>
+              <div className="text-sm leading-relaxed">
+                <ReactMarkdown components={markdownComponents}>{assessment.detailedReport?.replace(/\\n/g, '\n\n') || ''}</ReactMarkdown>
               </div>
             </div>
           </div>
@@ -467,7 +557,7 @@ function AssessmentContent() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#161B22', borderColor: '#30363D', color: '#fff' }} formatter={(value: any) => [value + ' repos', 'Count']} />
+                    <Tooltip contentStyle={{ backgroundColor: '#161B22', borderColor: '#30363D', color: '#fff' }} formatter={(value: any) => { const b = Number(value); return [b >= 1000000 ? (b / 1000000).toFixed(1) + 'MB' : b >= 1000 ? (b / 1000).toFixed(1) + 'KB' : b + 'B', 'Bytes']; }} />
                     <Legend wrapperStyle={{ fontSize: '10px', color: '#8B949E' }} />
                   </PieChart>
                 </ResponsiveContainer>
