@@ -31,6 +31,7 @@ export interface PRData {
 export interface UserAssessmentData {
   username: string;
   name: string;
+  avatarUrl: string;
   bio: string;
   company: string;
   blog: string;
@@ -187,6 +188,7 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
   return {
     username: user.login,
     name: user.name || '',
+    avatarUrl: user.avatar_url,
     bio: user.bio || '',
     company: user.company || '',
     blog: user.blog || '',

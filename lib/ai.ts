@@ -60,6 +60,7 @@ export interface AssessmentResult {
   hirabilityRoles: string[];
   notSuitedRoles: string[];
   detailedReport: string;
+  mentorshipPlan?: string;
   repoAssessments: {
     repoName: string;
     repoScore: number;
@@ -68,6 +69,28 @@ export interface AssessmentResult {
     keyHighlights: string[];
     redFlags: string[];
   }[];
+}
+
+export interface ComparisonCandidate {
+  username: string;
+  avatarUrl: string;
+  assessment: AssessmentResult;
+}
+
+export interface ComparisonResult {
+  candidates: {
+    username: string;
+    strengths: string[];
+    weaknesses: string[];
+    potential: number;
+    bestSuitedRole: string;
+    worstSuitedRole: string;
+  }[];
+  overallRanking: {
+    username: string;
+    recommendedFor: string;
+  }[];
+  verdict: string;
 }
 
 export async function generateAssessment(
@@ -177,6 +200,7 @@ export async function generateAssessment(
             hirabilityRoles: { type: Type.ARRAY, items: { type: Type.STRING } },
             notSuitedRoles: { type: Type.ARRAY, items: { type: Type.STRING } },
             detailedReport: { type: Type.STRING },
+            mentorshipPlan: { type: Type.STRING },
             repoAssessments: {
               type: Type.ARRAY,
               items: {
@@ -322,8 +346,11 @@ Please adhere to these overarching assessment logic rules:
     - NEVER give a score of exactly 7.0. Skip it. Use 6.9 or 7.1 instead.
     - Do NOT let writing style, vibes, or subjective impressions affect the score. Only the 3-signal band logic above.
 
-Your role (MODE-SPECIFIC — follow exactly):
-${mode === 'employer' ? "You are an employer reviewing this candidate for hiring. BE BRUTALLY HONEST and unforgiving. Focus STRICTLY on evaluating the candidate's qualities, failures, deficiencies, and risk factors. Do NOT give any tips, advice, constructive feedback, learning suggestions, or improvement paths — those belong in developer mode only. Weaknesses, red flags, gaps, and shortcomings must dominate the assessment. If strengths exist, mention them briefly, but the primary focus is what disqualifies or risks this candidate. Zero improvement language in summary, detailedReport, timeline, and swot.weaknesses/swot.threats. However, swot.opportunities is for EXTERNAL market positioning (roles they'd fit, industries where their skills match), NOT self-improvement tips — populate it." : "You are a senior mentor evaluating this developer to help them improve. BE CONSTRUCTIVE BUT CRITICAL. Point out flaws honestly but always frame them as actionable growth opportunities. Provide specific tips, learning resources, and a clear improvement path. Tone should be that of a senior mentor giving direct but helpful feedback — honest enough to sting, but framed to motivate growth."}
+17. MODE PARITY (CRITICAL): Your hirabilityScore, hirabilityRoles, notSuitedRoles, metrics, weaknessMetrics, swot, tags, slopeAnalysis, buzzwordAnalysis, behavioralAnalysis, growthMeter, timeline, summary, detailedReport, and repoAssessments MUST BE IDENTICAL regardless of mode. Do NOT change your assessment based on mode. The mode ONLY controls whether you populate the 'mentorshipPlan' field.
+18. MENTORSHIP PLAN (developer mode only): In developer mode, populate the 'mentorshipPlan' field with open-ended upgrade instructions. Do NOT limit to a fixed timeline. Cover: improving READMEs and documentation, sounding more professional, reducing arrogant tone, suggesting specific new projects that fill skill gaps, concrete improvements to existing projects, learning resources, and any other actionable advice. Let the scope emerge naturally from the profile. In employer mode, leave mentorshipPlan empty/null.
+
+Your role (MODE-SPECIFIC — only tone differs, never your scores):
+${mode === 'employer' ? "BRUTALLY HONEST. Focus on evaluating qualities, failures, deficiencies, and risk factors. Zero tips or improvement advice in any field except swot.opportunities." : "CONSTRUCTIVE BUT CRITICAL. Same scores and ratings as employer mode, but additionally populate mentorshipPlan with upgrade instructions."}
 
 ${customQuestions ? `The employer has customized questions for you to answer: "${customQuestions}"` : ''}
 
@@ -331,4 +358,122 @@ You MUST output ONLY a valid JSON object matching the requested schema exactly. 
 `;
 
   return basePrompt;
+}
+
+function buildComparisonPrompt(candidates: ComparisonCandidate[], customQuestion: string): string {
+  const summaries = candidates.map(c => ({
+    username: c.username,
+    avatarUrl: c.avatarUrl,
+    hirabilityScore: c.assessment.hirabilityScore,
+    hirabilityRoles: c.assessment.hirabilityRoles,
+    notSuitedRoles: c.assessment.notSuitedRoles,
+    summary: c.assessment.summary,
+    strengths: c.assessment.swot.strengths,
+    weaknesses: c.assessment.swot.weaknesses,
+    opportunities: c.assessment.swot.opportunities,
+    threats: c.assessment.swot.threats,
+    metrics: c.assessment.metrics,
+    slopeAnalysis: c.assessment.slopeAnalysis,
+    behavioralAnalysis: c.assessment.behavioralAnalysis,
+    tags: c.assessment.tags,
+  }));
+
+  return `Compare these GitHub developer candidates for hiring. Analyze them side by side and produce a structured comparison.
+
+CANDIDATES:
+${JSON.stringify(summaries, null, 2)}
+
+${customQuestion ? `The employer has a specific question: "${customQuestion}" - answer it directly in the verdict field.` : 'Determine which candidate is best suited for which roles based on their assessment data.'}
+
+INSTRUCTIONS:
+- For each candidate, list their top strengths, top weaknesses, potential score (0-100), the role they are best suited for, and the role they are worst suited for.
+- Provide an overall ranking where each candidate is assigned to roles they would excel at (e.g. "user1 is best for AI/ML engineering", "user2 is best for full-stack development").
+- The verdict should summarize: either "All candidates are ineligible - move to the next batch of candidates" or specify which candidate(s) are recommended.
+- Be brutally honest. If none are good, say so.
+- Output ONLY valid JSON. No markdown, no wrappers.
+`;
+}
+
+export async function compareCandidates(
+  candidates: ComparisonCandidate[],
+  settings: AppSettings,
+  customQuestion: string = ''
+): Promise<ComparisonResult> {
+  const prompt = buildComparisonPrompt(candidates.slice(0, 5), customQuestion);
+
+  let rawResponse = '';
+
+  if (settings.aiProvider === 'gemini') {
+    const apiKey = settings.geminiKey || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) throw new Error("Gemini API key is required.");
+    const ai = new GoogleGenAI({ apiKey: apiKey });
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0,
+        topP: 1,
+        topK: 1,
+        systemInstruction: "You are an expert tech recruiter comparing candidates. OUTPUT ONLY VALID JSON.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            candidates: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  username: { type: Type.STRING },
+                  strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  potential: { type: Type.NUMBER },
+                  bestSuitedRole: { type: Type.STRING },
+                  worstSuitedRole: { type: Type.STRING },
+                }
+              }
+            },
+            overallRanking: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  username: { type: Type.STRING },
+                  recommendedFor: { type: Type.STRING },
+                }
+              }
+            },
+            verdict: { type: Type.STRING }
+          }
+        }
+      }
+    });
+    rawResponse = response.text || '{}';
+  } else {
+    if (!settings.ollamaEndpoint) throw new Error("Ollama endpoint is required.");
+    const response = await fetch(`${settings.ollamaEndpoint}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama3',
+        prompt: prompt,
+        system: "You are an expert tech recruiter comparing candidates. OUTPUT ONLY VALID JSON.",
+        stream: false,
+        options: { temperature: 0 },
+        format: 'json'
+      })
+    });
+    if (!response.ok) throw new Error('Failed to fetch from Ollama');
+    const result = await response.json();
+    rawResponse = result.response || '{}';
+  }
+
+  try {
+    const cleaned = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleaned) as ComparisonResult;
+  } catch (e) {
+    console.error("Failed to parse comparison JSON", rawResponse);
+    throw new Error("AI returned malformed comparison data. Try again.");
+  }
 }

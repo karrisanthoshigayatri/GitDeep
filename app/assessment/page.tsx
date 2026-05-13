@@ -3,10 +3,10 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { fetchGitHubProfile, UserAssessmentData } from '@/lib/github';
-import { generateAssessment, AssessmentMode, AssessmentResult } from '@/lib/ai';
+import { generateAssessment, AssessmentMode, AssessmentResult, compareCandidates, ComparisonCandidate, ComparisonResult } from '@/lib/ai';
 import { useStore } from '@/lib/store';
 import { SettingsModal } from '@/components/SettingsModal';
-import { ArrowLeft, Loader2, Send, Linkedin, Twitter, Target, Zap, Shield, AlertTriangle, Code2, Instagram, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, Linkedin, Twitter, Target, Zap, Shield, AlertTriangle, Code2, Instagram, ExternalLink, GitCompare, X, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 
@@ -24,6 +24,12 @@ function AssessmentContent() {
   const [assessment, setAssessment] = useState<AssessmentResult | null>(null);
   const [customQuestion, setCustomQuestion] = useState('');
   const [askingQuestion, setAskingQuestion] = useState(false);
+  const [savedCandidates, setSavedCandidates] = useState<ComparisonCandidate[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const [compareQuestion, setCompareQuestion] = useState('');
 
   useEffect(() => {
     if (!username) return;
@@ -49,6 +55,20 @@ function AssessmentContent() {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, mode, settings.githubToken, settings.aiProvider, settings.geminiKey, settings.ollamaEndpoint]);
+
+  useEffect(() => {
+    const stored = JSON.parse(sessionStorage.getItem('assessedCandidates') || '[]');
+    setSavedCandidates(stored);
+
+    if (assessment && githubData) {
+      const entry: ComparisonCandidate = { username: githubData.username, avatarUrl: githubData.avatarUrl, assessment };
+      const idx = stored.findIndex((c: ComparisonCandidate) => c.username === githubData.username);
+      if (idx >= 0) stored[idx] = entry;
+      else stored.push(entry);
+      sessionStorage.setItem('assessedCandidates', JSON.stringify(stored));
+      setSavedCandidates([...stored]);
+    }
+  }, [assessment, githubData]);
 
   const handleAskQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,7 +290,19 @@ function AssessmentContent() {
                 ))}
               </div>
             </div>
-          </div>
+            </div>
+
+          {mode === 'employer' && (
+            <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-5 shadow-lg">
+              <button
+                onClick={() => { setShowCompare(true); setComparisonResult(null); setSelectedForCompare([]); }}
+                className="w-full flex items-center justify-center gap-2 bg-[#1F6FEB] hover:bg-[#388BFD] text-white text-xs font-bold py-3 px-4 rounded-lg transition-colors uppercase tracking-widest"
+              >
+                <GitCompare className="w-4 h-4" /> Compare Candidates
+                {savedCandidates.length > 0 && <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px]">{savedCandidates.length} saved</span>}
+              </button>
+            </div>
+          )}
 
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-5 shadow-lg">
             <h3 className="font-bold text-white text-xs uppercase mb-4 tracking-widest flex items-center gap-2"><Target className="w-4 h-4 text-[#58A6FF]"/> Contact Graph</h3>
@@ -504,6 +536,21 @@ function AssessmentContent() {
               </div>
             </div>
           </div>
+
+          {assessment.mentorshipPlan && mode === 'developer' && (
+            <div className="bg-[#161B22] border border-[#1F6FEB]/50 rounded-xl shadow-2xl overflow-hidden">
+              <div className="p-4 border-b border-[#1F6FEB]/30 bg-[#1F6FEB]/10 sticky top-0 z-10 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-[#58A6FF]" />
+                <h2 className="text-sm font-bold text-white uppercase tracking-widest font-mono">Mentorship & Upgrade Plan</h2>
+              </div>
+              <div className="p-6">
+                <div className="text-sm leading-relaxed">
+                  <ReactMarkdown components={markdownComponents}>{assessment.mentorshipPlan}</ReactMarkdown>
+                </div>
+              </div>
+            </div>
+          )}
+
         </section>
 
         {/* Right Sidebar: Radars & Langs & Ask */}
@@ -591,7 +638,207 @@ function AssessmentContent() {
         </aside>
 
       </main>
-      
+
+      {showCompare && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center pt-8 pb-8 overflow-y-auto">
+          <div className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-[#161B22] z-10 p-4 border-b border-[#30363D] flex items-center justify-between">
+              <h2 className="text-sm font-bold text-white uppercase tracking-widest font-mono flex items-center gap-2">
+                <GitCompare className="w-4 h-4 text-[#58A6FF]" /> Compare Candidates
+              </h2>
+              <button onClick={() => setShowCompare(false)} className="p-1.5 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#C9D1D9]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {!comparisonResult ? (
+                <>
+                  <p className="text-xs text-[#8B949E] mb-4">Select up to 5 candidates to compare side by side.</p>
+                  
+                  {savedCandidates.length === 0 ? (
+                    <p className="text-[#F85149] text-sm">No candidates saved yet. Assess some profiles first.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                      {savedCandidates.map((c) => {
+                        const selected = selectedForCompare.includes(c.username);
+                        const disabled = !selected && selectedForCompare.length >= 5;
+                        return (
+                          <button
+                            key={c.username}
+                            onClick={() => {
+                              setSelectedForCompare(prev =>
+                                selected ? prev.filter(u => u !== c.username) : [...prev, c.username]
+                              );
+                            }}
+                            disabled={disabled && !selected}
+                            className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
+                              selected
+                                ? 'bg-[#1F6FEB]/20 border-[#1F6FEB] text-white'
+                                : 'bg-[#0D1117] border-[#30363D] text-[#8B949E] hover:border-[#8B949E] disabled:opacity-30'
+                            }`}
+                          >
+                            <img src={c.avatarUrl} alt={c.username} className="w-12 h-12 rounded-full border-2 border-[#30363D]" />
+                            <span className="text-xs font-bold truncate max-w-full">@{c.username}</span>
+                            <span className="text-[10px] font-mono">{(c.assessment.hirabilityScore ?? 0).toFixed(1)}/10</span>
+                            {selected && <Check className="w-4 h-4 text-[#58A6FF]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 mb-4">
+                    <input
+                      value={compareQuestion}
+                      onChange={e => setCompareQuestion(e.target.value)}
+                      placeholder="Ask AI: which candidate is best for a specific role?"
+                      className="flex-1 bg-[#0D1117] border border-[#30363D] text-xs rounded-lg py-2.5 px-3 outline-none text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (selectedForCompare.length < 2) return;
+                        setComparing(true);
+                        try {
+                          const selected = savedCandidates.filter(c => selectedForCompare.includes(c.username));
+                          const result = await compareCandidates(selected, settings, compareQuestion);
+                          setComparisonResult(result);
+                        } catch (err: any) {
+                          alert("Comparison failed: " + err.message);
+                        } finally {
+                          setComparing(false);
+                        }
+                      }}
+                      disabled={selectedForCompare.length < 2 || comparing}
+                      className="bg-[#1F6FEB] hover:bg-[#388BFD] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-5 py-2.5 rounded-lg transition-colors uppercase tracking-widest"
+                    >
+                      {comparing ? <Loader2 className="w-4 h-4 animate-spin" /> : `Compare ${selectedForCompare.length} Candidates`}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={`mb-6 p-4 rounded-xl border text-sm font-bold text-center ${
+                    comparisonResult.verdict.toLowerCase().includes('ineligible')
+                      ? 'bg-[#F85149]/20 border-[#F85149]/50 text-[#FF7B72]'
+                      : 'bg-[#2EA043]/20 border-[#2EA043]/50 text-[#46E363]'
+                  }`}>
+                    {comparisonResult.verdict}
+                  </div>
+
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="text-left text-[#8B949E] uppercase tracking-widest font-bold p-3 border-b border-[#30363D] w-32">Parameter</th>
+                          {comparisonResult.candidates.map(c => (
+                            <th key={c.username} className="text-center p-3 border-b border-[#30363D]">
+                              <div className="flex flex-col items-center gap-1">
+                                <img src={savedCandidates.find(s => s.username === c.username)?.avatarUrl || ''} alt={c.username} className="w-10 h-10 rounded-full border-2 border-[#30363D]" />
+                                <span className="text-[#58A6FF] font-bold">@{c.username}</span>
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-[#30363D]">
+                          <td className="p-3 text-[#46E363] font-bold uppercase tracking-wider">Strengths</td>
+                          {comparisonResult.candidates.map(c => (
+                            <td key={c.username} className="p-3"><ul className="list-disc list-inside text-[#C9D1D9] space-y-0.5">{c.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul></td>
+                          ))}
+                        </tr>
+                        <tr className="border-b border-[#30363D]">
+                          <td className="p-3 text-[#FF7B72] font-bold uppercase tracking-wider">Weaknesses</td>
+                          {comparisonResult.candidates.map(c => (
+                            <td key={c.username} className="p-3"><ul className="list-disc list-inside text-[#C9D1D9] space-y-0.5">{c.weaknesses.map((w, i) => <li key={i}>{w}</li>)}</ul></td>
+                          ))}
+                        </tr>
+                        <tr className="border-b border-[#30363D]">
+                          <td className="p-3 text-[#E3B341] font-bold uppercase tracking-wider">Potential</td>
+                          {comparisonResult.candidates.map(c => (
+                            <td key={c.username} className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-lg font-mono font-black text-white">{c.potential}</span>
+                                <span className="text-[10px] text-[#8B949E]">/100</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-[#0D1117] rounded-full mt-1">
+                                <div className="h-full bg-gradient-to-r from-[#2EA043] to-[#58A6FF] rounded-full" style={{ width: `${c.potential}%` }}></div>
+                              </div>
+                            </td>
+                          ))}
+                        </tr>
+                        <tr className="border-b border-[#30363D]">
+                          <td className="p-3 text-[#58A6FF] font-bold uppercase tracking-wider">Best Role</td>
+                          {comparisonResult.candidates.map(c => (
+                            <td key={c.username} className="p-3 text-center"><span className="px-2 py-1 bg-[#2EA043]/10 border border-[#2EA043]/30 text-[#46E363] rounded text-[10px] font-bold">{c.bestSuitedRole}</span></td>
+                          ))}
+                        </tr>
+                        <tr>
+                          <td className="p-3 text-[#F85149] font-bold uppercase tracking-wider">Worst Role</td>
+                          {comparisonResult.candidates.map(c => (
+                            <td key={c.username} className="p-3 text-center"><span className="px-2 py-1 bg-[#F85149]/10 border border-[#F85149]/30 text-[#FF7B72] rounded text-[10px] font-bold">{c.worstSuitedRole}</span></td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {comparisonResult.overallRanking.length > 0 && (
+                    <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4 mb-4">
+                      <h3 className="text-xs font-bold text-[#E3B341] uppercase tracking-widest mb-3">Combined Ranking</h3>
+                      <ul className="space-y-2">
+                        {comparisonResult.overallRanking.map((r, i) => (
+                          <li key={i} className="flex items-center gap-3 text-xs text-[#C9D1D9]">
+                            <span className="w-6 h-6 rounded-full bg-[#1F6FEB] text-white font-bold flex items-center justify-center text-[10px]">{i + 1}</span>
+                            <span className="font-bold text-[#58A6FF]">@{r.username}</span>
+                            <span className="text-[#8B949E]">—</span>
+                            <span>{r.recommendedFor}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      value={compareQuestion}
+                      onChange={e => setCompareQuestion(e.target.value)}
+                      placeholder="Ask AI a follow-up about these candidates..."
+                      className="flex-1 bg-[#0D1117] border border-[#30363D] text-xs rounded-lg py-2.5 px-3 outline-none text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
+                    />
+                    <button
+                      onClick={async () => {
+                        setComparing(true);
+                        try {
+                          const selected = savedCandidates.filter(c => selectedForCompare.includes(c.username));
+                          const result = await compareCandidates(selected, settings, compareQuestion);
+                          setComparisonResult(result);
+                        } catch (err: any) {
+                          alert("Comparison failed: " + err.message);
+                        } finally {
+                          setComparing(false);
+                        }
+                      }}
+                      disabled={comparing}
+                      className="bg-[#1F6FEB] hover:bg-[#388BFD] disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors uppercase tracking-widest flex items-center gap-2"
+                    >
+                      {comparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-3 h-3" />} Ask AI
+                    </button>
+                    <button
+                      onClick={() => setComparisonResult(null)}
+                      className="text-[#8B949E] hover:text-white text-xs font-bold transition-colors uppercase tracking-widest"
+                    >
+                      Back
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <SettingsModal />
     </div>
   );
