@@ -1,0 +1,520 @@
+"use client";
+
+import React, { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { fetchGitHubProfile, UserAssessmentData } from '@/lib/github';
+import { generateAssessment, AssessmentMode, AssessmentResult } from '@/lib/ai';
+import { useStore } from '@/lib/store';
+import { SettingsModal } from '@/components/SettingsModal';
+import { ArrowLeft, Loader2, Send, Linkedin, Twitter, Target, Zap, Shield, AlertTriangle, Code2, Instagram } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
+
+function AssessmentContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { settings } = useStore();
+  
+  const username = searchParams.get('user');
+  const mode = (searchParams.get('mode') as AssessmentMode) || 'employer';
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [githubData, setGithubData] = useState<UserAssessmentData | null>(null);
+  const [assessment, setAssessment] = useState<AssessmentResult | null>(null);
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [askingQuestion, setAskingQuestion] = useState(false);
+
+  useEffect(() => {
+    if (!username) return;
+
+    async function fetchData() {
+      setLoading(true);
+      setError(null);
+      try {
+        const ghData = await fetchGitHubProfile(username!, settings.githubToken);
+        setGithubData(ghData);
+
+        const aiResponse = await generateAssessment(ghData, settings, mode);
+        setAssessment(aiResponse);
+        
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'An unknown error occurred. Make sure your API keys and endpoints are correct.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [username, mode, settings.githubToken, settings.aiProvider, settings.geminiKey, settings.ollamaEndpoint]);
+
+  const handleAskQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customQuestion.trim() || !githubData) return;
+    
+    setAskingQuestion(true);
+    try {
+      const response = await generateAssessment(githubData, settings, mode, customQuestion);
+      setAssessment(prev => {
+        if (!prev) return response;
+        return {
+          ...response,
+          detailedReport: prev.detailedReport + `\n\n---\n\n### Q: ${customQuestion}\n\n${response.detailedReport}`,
+        };
+      });
+      setCustomQuestion('');
+    } catch (err: any) {
+      alert("Error asking question: " + err.message);
+    } finally {
+      setAskingQuestion(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 min-h-screen bg-[#0D1117] flex flex-col items-center justify-center space-y-6">
+        <Loader2 className="w-12 h-12 animate-spin text-[#58A6FF]" />
+        <h2 className="text-xl font-medium text-[#C9D1D9] animate-pulse font-mono tracking-tighter">
+          [ ANALYZING {username?.toUpperCase()} ]
+        </h2>
+        <p className="text-sm text-[#8B949E]">Fetching repos, PRs, and questioning life choices...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 min-h-screen bg-[#0D1117] flex flex-col items-center justify-center max-w-2xl mx-auto text-center px-4">
+        <div className="bg-[#F85149]/20 text-[#F85149] p-6 rounded-xl border border-[#F85149]/50 mb-6 w-full shadow-[0_0_15px_rgba(248,81,73,0.1)]">
+          <h2 className="font-bold text-lg mb-2 font-mono flex items-center justify-center gap-2">
+            <AlertTriangle className="w-5 h-5"/> ANALYSIS FAILED
+          </h2>
+          <p className="font-mono text-sm">{error}</p>
+        </div>
+        <button onClick={() => router.push('/')} className="flex items-center gap-2 text-[#8B949E] hover:text-white font-medium transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Go Back
+        </button>
+      </div>
+    );
+  }
+
+  if (!githubData || !assessment) return null;
+
+  // Language Chart data
+  const COLORS = ['#F1E05A', '#3178C6', '#E34C26', '#563D7C', '#3572A5', '#B07219'];
+  const langData = Object.keys(githubData.languages).map((key, index) => ({
+    name: key,
+    value: githubData.languages[key],
+    color: COLORS[index % COLORS.length]
+  })).sort((a, b) => b.value - a.value).slice(0, 6); // Top 6
+
+  const strengthRadarData = [
+    { subject: 'Creativity', A: assessment.metrics.creativity, fullMark: 100 },
+    { subject: 'Potential', A: assessment.metrics.potential, fullMark: 100 },
+    { subject: 'AI Usage', A: assessment.metrics.aiUsage, fullMark: 100 },
+    { subject: 'Security', A: assessment.metrics.security, fullMark: 100 },
+    { subject: 'Pro', A: assessment.metrics.professionalism, fullMark: 100 },
+    { subject: 'Code', A: assessment.metrics.codeQuality, fullMark: 100 },
+  ];
+
+  const weaknessRadarData = [
+    { subject: 'Buzzwords', A: assessment.weaknessMetrics.buzzwordDensity, fullMark: 100 },
+    { subject: 'AI Slop', A: assessment.weaknessMetrics.aiSlop, fullMark: 100 },
+    { subject: 'No Docs', A: assessment.weaknessMetrics.lackOfDocs, fullMark: 100 },
+    { subject: 'Consistency', A: assessment.weaknessMetrics.inconsistency, fullMark: 100 },
+    { subject: 'Arrogance', A: assessment.weaknessMetrics.arrogance, fullMark: 100 },
+    { subject: 'Architecture', A: assessment.weaknessMetrics.poorArchitecture, fullMark: 100 },
+  ];
+
+  return (
+    <div className="flex-1 bg-[#0D1117] pb-20">
+      <header className="bg-[#161B22] border-b border-[#30363D] sticky top-0 z-40 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => router.push('/')} className="p-2 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#C9D1D9]">
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-3">
+              <h1 className="font-bold text-lg text-white truncate font-mono">
+                {githubData.name || githubData.username}
+              </h1>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${mode === 'employer' ? 'bg-[#238636] border-[#2EA043] text-white' : 'bg-[#1F6FEB]/20 border-[#1F6FEB]/50 text-[#58A6FF]'}`}>
+                {mode === 'employer' ? 'Employer Mode' : 'Developer Mode'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-6 text-xs text-[#8B949E] font-mono">
+            <span>REPOS: <span className="text-white">{githubData.publicRepos}</span></span>
+            <span>FOLLOWERS: <span className="text-[#58A6FF]">{githubData.followers}</span></span>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+        
+        {/* Left Sidebar: Profile & Hirability */}
+        <aside className="lg:col-span-3 flex flex-col gap-6">
+          <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-xl relative overflow-hidden group hover:border-[#8B949E] transition-colors">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#2EA043] via-[#58A6FF] to-[#8957E5]"></div>
+            
+            <div className="mb-4 pb-4 border-b border-[#30363D]">
+              <span className="text-[10px] text-[#8B949E] font-bold uppercase tracking-widest block mb-1">GitHub Bio</span>
+              <p className="text-xs text-[#C9D1D9] italic line-clamp-4">
+                {githubData.bio ? `"${githubData.bio}"` : "No bio provided."}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-[#30363D]">
+               <div className="bg-[#0D1117] border border-[#30363D] rounded p-2 text-center">
+                  <span className="block text-[9px] text-[#8B949E] uppercase mb-1">Total Stars</span>
+                  <span className="text-[#E3B341] font-bold text-sm font-mono">{githubData.totalStars}</span>
+               </div>
+               <div className="bg-[#0D1117] border border-[#30363D] rounded p-2 text-center">
+                  <span className="block text-[9px] text-[#8B949E] uppercase mb-1">Merged PRs</span>
+                  <span className="text-[#A371F7] font-bold text-sm font-mono">{githubData.totalPrs}</span>
+               </div>
+               <div className="bg-[#0D1117] border border-[#30363D] rounded p-2 text-center col-span-2">
+                  <span className="block text-[9px] text-[#8B949E] uppercase mb-1">Account Age</span>
+                  <span className="text-[#58A6FF] font-bold text-sm font-mono">{Math.max(0, new Date().getFullYear() - new Date(githubData.createdAt).getFullYear())} Years</span>
+               </div>
+            </div>
+
+            <div className="flex flex-col mb-4">
+              <h1 className="text-xs font-bold uppercase tracking-widest text-[#8B949E] mb-1">Hirability Score</h1>
+              <div className="flex items-end gap-1">
+                <div className="text-6xl font-mono font-black text-white">{assessment.hirabilityScore > 10 ? (assessment.hirabilityScore / 10).toFixed(1) : parseFloat(assessment.hirabilityScore.toString()).toFixed(1)}</div>
+                <div className="text-xl text-[#2EA043] font-mono pb-1">/ 10</div>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <span className="text-[#8B949E] uppercase font-bold text-[10px] block mb-1">Suited Roles</span>
+                <div className="flex gap-1 flex-wrap">
+                  {assessment.hirabilityRoles?.map(r => (
+                    <span key={r} className="px-2 py-0.5 bg-[#2EA043]/10 border border-[#2EA043]/30 text-[#46E363] rounded tracking-tight">{r}</span>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <span className="text-[#8B949E] uppercase font-bold text-[10px] block mb-1">Not Suited</span>
+                <div className="flex gap-1 flex-wrap">
+                  {assessment.notSuitedRoles?.map(r => (
+                    <span key={r} className="px-2 py-0.5 bg-[#F85149]/10 border border-[#F85149]/30 text-[#FF7B72] rounded tracking-tight">{r}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#30363D]">
+              <span className="text-[#8B949E] uppercase font-bold text-[10px] block mb-2">Developer Tags</span>
+              <div className="flex gap-2 flex-wrap">
+                {assessment.tags?.map(tag => (
+                  <span key={tag} className="px-2 py-1 bg-[#1F2428] border border-[#30363D] text-[#C9D1D9] text-[10px] rounded uppercase font-bold tracking-widest">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-5 shadow-lg">
+            <h3 className="font-bold text-white text-xs uppercase mb-4 tracking-widest flex items-center gap-2"><Target className="w-4 h-4 text-[#58A6FF]"/> Contact Graph</h3>
+            <ul className="space-y-3 text-xs font-mono">
+              <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
+                <span className="text-[#8B949E]">GitHub</span>
+                <a href={`https://github.com/${githubData.username}`} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold">@{(githubData.username)}</a>
+              </li>
+              {githubData.blog && (
+                <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
+                  <span className="text-[#8B949E]">Website</span>
+                  <a href={(githubData.blog.startsWith('http') ? githubData.blog : `https://${githubData.blog}`)} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold max-w-[150px] truncate">{githubData.blog}</a>
+                </li>
+              )}
+              {githubData.linkedinUrl && (
+                <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
+                  <span className="text-[#8B949E] flex items-center gap-1"><Linkedin className="w-3 h-3"/> LinkedIn</span>
+                  <a href={githubData.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold max-w-[150px] truncate">Profile</a>
+                </li>
+              )}
+              {githubData.leetcodeUrl && (
+                <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
+                  <span className="text-[#8B949E] flex items-center gap-1"><Code2 className="w-3 h-3"/> LeetCode</span>
+                  <a href={githubData.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold max-w-[150px] truncate">Profile</a>
+                </li>
+              )}
+              {githubData.instagramUrl && (
+                <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
+                  <span className="text-[#8B949E] flex items-center gap-1"><Instagram className="w-3 h-3"/> Instagram</span>
+                  <a href={githubData.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold max-w-[150px] truncate">Profile</a>
+                </li>
+              )}
+              {githubData.twitterUsername && (
+                <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
+                  <span className="text-[#8B949E] flex items-center gap-1"><Twitter className="w-3 h-3"/> Twitter</span>
+                  <a href={`https://twitter.com/${githubData.twitterUsername}`} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold max-w-[150px] truncate">@{githubData.twitterUsername}</a>
+                </li>
+              )}
+            </ul>
+          </div>
+        </aside>
+
+        {/* Center Main: Detailed Report & SWOT */}
+        <section className="lg:col-span-6 space-y-6">
+          <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-2xl">
+            <h2 className="text-lg font-bold text-white mb-2 font-mono uppercase tracking-widest"><Zap className="inline w-5 h-5 text-[#E3B341] pb-1"/> Executive Summary</h2>
+            <p className="text-[#C9D1D9] text-sm leading-relaxed mb-6">{assessment.summary}</p>
+
+            <div className="mb-8 relative">
+              <div className="flex items-center justify-between mb-4 border-b border-[#30363D] pb-2">
+                 <h2 className="text-lg font-bold text-white font-mono uppercase tracking-widest">Career Timeline</h2>
+                 <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-[#8B949E] uppercase tracking-widest">Growth Potential</span>
+                    <div className="w-24 h-2 bg-[#0D1117] border border-[#30363D] rounded-full overflow-hidden">
+                       <div className="h-full bg-gradient-to-r from-[#2EA043] to-[#58A6FF]" style={{ width: `${assessment.growthMeter}%` }}></div>
+                    </div>
+                    <span className="text-xs font-bold text-[#58A6FF]">{assessment.growthMeter}%</span>
+                 </div>
+              </div>
+              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-[#30363D] before:to-transparent">
+                {assessment.timeline && assessment.timeline.map((phase, idx) => (
+                  <div key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-[#161B22] bg-[#21262D] text-[#8B949E] group-hover:text-[#58A6FF] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-colors">
+                      <div className="w-2 h-2 bg-[#58A6FF] rounded-full"></div>
+                    </div>
+                    <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0D1117] border border-[#30363D] p-4 rounded-xl shadow">
+                      <div className="flex items-center justify-between mb-1">
+                         <h3 className="font-bold text-[#C9D1D9] text-sm">{phase.title}</h3>
+                         <span className="text-[10px] text-[#58A6FF] font-mono px-2 py-0.5 bg-[#58A6FF]/10 rounded-full">{phase.year}</span>
+                      </div>
+                      <p className="text-xs text-[#8B949E]">{phase.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <h2 className="text-lg font-bold text-white mb-4 font-mono uppercase tracking-widest border-b border-[#30363D] pb-2 mt-8">SWOT Analysis</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-[#2EA043]/10 border border-[#2EA043]/30 rounded-lg p-4">
+                <h4 className="text-[#46E363] text-xs font-bold uppercase mb-2">Strengths</h4>
+                <ul className="text-xs text-[#C9D1D9] space-y-1 list-disc list-inside">
+                  {assessment.swot.strengths?.map((t, idx) => <li key={idx} className="break-words">{t}</li>)}
+                </ul>
+              </div>
+              <div className="bg-[#F85149]/10 border border-[#F85149]/30 rounded-lg p-4">
+                <h4 className="text-[#FF7B72] text-xs font-bold uppercase mb-2">Weaknesses</h4>
+                <ul className="text-xs text-[#C9D1D9] space-y-1 list-disc list-inside">
+                  {assessment.swot.weaknesses?.map((t, idx) => <li key={idx} className="break-words">{t}</li>)}
+                </ul>
+              </div>
+              <div className="bg-[#58A6FF]/10 border border-[#58A6FF]/30 rounded-lg p-4">
+                <h4 className="text-[#79C0FF] text-xs font-bold uppercase mb-2">Opportunities</h4>
+                <ul className="text-xs text-[#C9D1D9] space-y-1 list-disc list-inside">
+                  {assessment.swot.opportunities?.map((t, idx) => <li key={idx} className="break-words">{t}</li>)}
+                </ul>
+              </div>
+              <div className="bg-[#8957E5]/10 border border-[#8957E5]/30 rounded-lg p-4">
+                <h4 className="text-[#A371F7] text-xs font-bold uppercase mb-2">Threats</h4>
+                <ul className="text-xs text-[#C9D1D9] space-y-1 list-disc list-inside">
+                  {assessment.swot.threats?.map((t, idx) => <li key={idx} className="break-words">{t}</li>)}
+                </ul>
+              </div>
+            </div>
+
+            {assessment.slopeAnalysis && (
+              <>
+                <h2 className="text-lg font-bold text-white mb-4 font-mono uppercase tracking-widest border-b border-[#30363D] pb-2 mt-8">Advanced AI Insights</h2>
+                
+                <div className="space-y-6">
+                  {/* Slope Detection */}
+                  <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4">
+                    <h3 className="text-sm font-bold text-[#58A6FF] uppercase mb-3 flex items-center gap-2"><Target className="w-4 h-4"/> Career Slope Detection</h3>
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="bg-[#161B22] border border-[#30363D] rounded p-2 text-center">
+                        <span className="block text-[#8B949E] text-[10px] uppercase">Trajectory</span>
+                        <span className="text-[#C9D1D9] text-xs font-bold">{assessment.slopeAnalysis.slopeTrajectory}</span>
+                      </div>
+                      <div className="bg-[#161B22] border border-[#30363D] rounded p-2 text-center">
+                        <span className="block text-[#8B949E] text-[10px] uppercase">Consistency</span>
+                        <span className="text-[#C9D1D9] text-xs font-bold">{assessment.slopeAnalysis.consistencyRating}</span>
+                      </div>
+                      <div className="bg-[#161B22] border border-[#30363D] rounded p-2 text-center">
+                        <span className="block text-[#8B949E] text-[10px] uppercase">Burnout Risk</span>
+                        <span className="text-[#C9D1D9] text-xs font-bold">{assessment.slopeAnalysis.burnoutRisk}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-[#8B949E]">{assessment.slopeAnalysis.analysisSummary}</p>
+                  </div>
+
+                  {/* Buzzword Analyzer */}
+                  <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4">
+                    <h3 className="text-sm font-bold text-[#E3B341] uppercase mb-3 flex items-center gap-2"><Zap className="w-4 h-4"/> Buzzword vs Reality</h3>
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs text-[#C9D1D9]"><strong>Verdict:</strong> {assessment.buzzwordAnalysis.verdict}</span>
+                      <span className="text-[10px] bg-[#161B22] border border-[#30363D] px-2 py-1 rounded">Ratio: {assessment.buzzwordAnalysis.buzzwordToRealityRatio > 10 ? (assessment.buzzwordAnalysis.buzzwordToRealityRatio / 10).toFixed(1) : parseFloat(assessment.buzzwordAnalysis.buzzwordToRealityRatio.toString()).toFixed(1)}/10</span>
+                    </div>
+                    <p className="text-xs text-[#8B949E] italic mb-3">&quot;{assessment.buzzwordAnalysis.roastOrPraise}&quot;</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-[10px] text-[#8B949E] uppercase block mb-1">Detected Buzzwords</span>
+                        <div className="flex flex-wrap gap-1">
+                          {assessment.buzzwordAnalysis.buzzwordsDetected?.map((b, i) => <span key={i} className="text-[10px] px-1.5 py-0.5 bg-[#F85149]/10 text-[#FF7B72] border border-[#F85149]/20 rounded">{b}</span>)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8B949E] uppercase block mb-1">Actual Stack</span>
+                        <div className="flex flex-wrap gap-1">
+                          {assessment.buzzwordAnalysis.actualTechStack?.map((b, i) => <span key={i} className="text-[10px] px-1.5 py-0.5 bg-[#2EA043]/10 text-[#46E363] border border-[#2EA043]/20 rounded">{b}</span>)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Behavioral Analysis */}
+                  <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4">
+                    <h3 className="text-sm font-bold text-[#A371F7] uppercase mb-3 flex items-center gap-2"><Shield className="w-4 h-4"/> Arrogance vs Confidence</h3>
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                       <div className="flex items-center justify-between bg-[#161B22] border border-[#30363D] rounded p-2">
+                        <span className="text-[#8B949E] text-[10px] uppercase">Confidence</span>
+                        <span className="text-[#58A6FF] text-xs font-bold">{assessment.behavioralAnalysis.confidenceScore}/100</span>
+                       </div>
+                       <div className="flex items-center justify-between bg-[#161B22] border border-[#30363D] rounded p-2">
+                        <span className="text-[#8B949E] text-[10px] uppercase">Arrogance</span>
+                        <span className="text-[#F85149] text-xs font-bold">{assessment.behavioralAnalysis.arroganceScore}/100</span>
+                       </div>
+                    </div>
+                    <p className="text-xs text-[#C9D1D9] mb-2"><strong>Archetype:</strong> {assessment.behavioralAnalysis.primaryArchetype}</p>
+                    <p className="text-xs text-[#8B949E] mb-3">{assessment.behavioralAnalysis.vibeCheck}</p>
+                    <div>
+                        <span className="text-[10px] text-[#8B949E] uppercase block mb-1">Behavioral Flags</span>
+                        <ul className="text-[10px] text-[#C9D1D9] space-y-1 list-disc list-inside">
+                          {assessment.behavioralAnalysis.behavioralFlags?.map((f, i) => <li key={i}>{f}</li>)}
+                        </ul>
+                    </div>
+                  </div>
+
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="bg-[#161B22] border border-[#30363D] rounded-xl flex flex-col shadow-2xl overflow-hidden h-full md:min-h-[800px]">
+            <div className="p-4 border-b border-[#30363D] bg-[#21262D] sticky top-0 z-10 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-white uppercase tracking-widest font-mono">
+                Detailed Assessment Output
+              </h2>
+              <span className="text-[10px] text-[#8B949E] px-2 py-1 bg-[#0D1117] border border-[#30363D] rounded-full">RAW LOG</span>
+            </div>
+            <div className="p-6 overflow-y-auto w-full custom-scrollbar">
+              <div className="prose prose-invert max-w-none prose-sm prose-headings:font-bold prose-h2:text-sm prose-h2:uppercase prose-h2:tracking-widest prose-h2:text-[#58A6FF] prose-h3:text-xs prose-h3:text-[#8B949E] prose-h3:uppercase prose-h2:border-b-0 prose-h2:mb-4 prose-h2:mt-10 first:prose-h2:mt-0 prose-h3:mb-2 prose-h3:mt-8 hover:prose-a:pointer-events-auto prose-a:text-[#58A6FF] hover:prose-a:underline prose-p:text-[#C9D1D9] prose-p:leading-relaxed prose-p:mb-6 prose-li:text-[#C9D1D9] prose-li:mb-2 prose-code:text-[#E3B341] prose-code:bg-[#0D1117] prose-code:px-1 prose-code:rounded prose-blockquote:border-l-[#A371F7] prose-blockquote:bg-[#A371F7]/10 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:font-normal prose-blockquote:text-[#C9D1D9] prose-blockquote:not-italic prose-strong:bg-[#E3B341]/20 prose-strong:text-[#E3B341] prose-strong:px-1.5 prose-strong:py-0.5 prose-strong:rounded prose-strong:font-bold prose-ul:list-disc prose-ul:pl-4 prose-ul:mb-6 prose-ul:mt-4 prose-ol:list-decimal prose-ol:pl-4 prose-em:text-[#58A6FF] prose-em:not-italic">
+                <ReactMarkdown>{assessment.detailedReport?.replace(/\\n/g, '\n\n') || ''}</ReactMarkdown>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Right Sidebar: Radars & Langs & Ask */}
+        <aside className="lg:col-span-3 space-y-6">
+          <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-4 shadow-lg text-center">
+            <h3 className="font-bold text-white text-xs uppercase mb-1 tracking-widest"><Shield className="w-4 h-4 inline pb-0.5 text-[#2EA043]"/> Core Competencies</h3>
+            <p className="text-[10px] text-[#8B949E] mb-2">Capabilities based on profile</p>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart outerRadius={60} data={strengthRadarData}>
+                  <PolarGrid stroke="#30363D" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#8B949E', fontSize: 10 }} />
+                  <Radar name="Strength" dataKey="A" stroke="#2EA043" fill="#2EA043" fillOpacity={0.4} />
+                  <Tooltip contentStyle={{ backgroundColor: '#161B22', borderColor: '#30363D', color: '#fff' }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-4 shadow-lg text-center">
+            <h3 className="font-bold text-[#FF7B72] text-xs uppercase mb-1 tracking-widest"><AlertTriangle className="w-4 h-4 inline pb-0.5"/> Risk Factors</h3>
+            <p className="text-[10px] text-[#8B949E] mb-2">Vulnerabilities in behavior/code</p>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart outerRadius={60} data={weaknessRadarData}>
+                  <PolarGrid stroke="#30363D" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#8B949E', fontSize: 10 }} />
+                  <Radar name="Weakness" dataKey="A" stroke="#F85149" fill="#F85149" fillOpacity={0.4} />
+                  <Tooltip contentStyle={{ backgroundColor: '#161B22', borderColor: '#30363D', color: '#fff' }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-4 shadow-lg">
+            <h3 className="font-bold text-white text-xs uppercase mb-1 tracking-widest text-center">Language Distribution</h3>
+            {langData.length > 0 ? (
+              <div className="h-48 mt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={langData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={60}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {langData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: '#161B22', borderColor: '#30363D', color: '#fff' }} formatter={(value: any) => [value + ' repos', 'Count']} />
+                    <Legend wrapperStyle={{ fontSize: '10px', color: '#8B949E' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-[#8B949E] text-xs text-center mt-4">No language data.</p>
+            )}
+          </div>
+
+          <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4 border-dashed relative">
+            <h3 className="font-bold text-white mb-2 uppercase text-[11px] tracking-widest font-mono text-[#E3B341]">Consult the AI</h3>
+            <p className="text-[10px] text-[#8B949E] mb-4 leading-relaxed">Ask specific questions about this developer&apos;s suitability for a role or specific tech stacks.</p>
+            <form onSubmit={handleAskQuestion} className="relative">
+              <input 
+                type="text" 
+                value={customQuestion}
+                onChange={e => setCustomQuestion(e.target.value)}
+                placeholder="Good fit for Startup CTO?"
+                className="w-full bg-[#161B22] border border-[#30363D] text-[11px] rounded py-3 pl-3 pr-10 outline-none text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
+                disabled={askingQuestion}
+              />
+              <button 
+                type="submit" 
+                disabled={askingQuestion || !customQuestion.trim()}
+                className="absolute right-2 top-2 text-[#58A6FF] disabled:opacity-50 hover:text-white transition-colors"
+               >
+                {askingQuestion ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </button>
+            </form>
+          </div>
+        </aside>
+
+      </main>
+      
+      <SettingsModal />
+    </div>
+  );
+}
+
+export default function Assessment() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0D1117] flex justify-center items-center">
+        <Loader2 className="w-12 h-12 text-[#8B949E] animate-spin" />
+      </div>
+    }>
+      <AssessmentContent />
+    </Suspense>
+  );
+}
