@@ -18,8 +18,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const saved = sessionStorage.getItem('github-assessor-settings');
     if (saved) {
       try {
+        const parsed = JSON.parse(saved);
+        // Migrate old settings format (geminiKey, ollamaEndpoint, ollamaModel -> apiKey, apiEndpoint, model)
+        if (!parsed.apiKey && parsed.geminiKey) parsed.apiKey = parsed.geminiKey;
+        if (!parsed.apiEndpoint && parsed.ollamaEndpoint) parsed.apiEndpoint = parsed.ollamaEndpoint;
+        if (!parsed.model && parsed.ollamaModel) parsed.model = parsed.ollamaModel;
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setSettings({ ...defaultSettings, ...JSON.parse(saved) });
+        setSettings({ ...defaultSettings, ...parsed });
       } catch (e) {
         console.error("Failed to parse settings", e);
       }

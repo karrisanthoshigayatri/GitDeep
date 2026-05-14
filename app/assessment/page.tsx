@@ -30,6 +30,8 @@ function AssessmentContent() {
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
   const [comparing, setComparing] = useState(false);
   const [compareQuestion, setCompareQuestion] = useState('');
+  const [newCompareUser, setNewCompareUser] = useState('');
+  const [addingToCompare, setAddingToCompare] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -54,7 +56,7 @@ function AssessmentContent() {
 
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username, mode, settings.githubToken, settings.aiProvider, settings.geminiKey, settings.ollamaEndpoint]);
+  }, [username, mode, settings.githubToken, settings.aiProvider, settings.apiKey, settings.apiEndpoint, settings.model]);
 
   useEffect(() => {
     const stored = JSON.parse(sessionStorage.getItem('assessedCandidates') || '[]');
@@ -65,7 +67,7 @@ function AssessmentContent() {
       const idx = stored.findIndex((c: ComparisonCandidate) => c.username === githubData.username);
       if (idx >= 0) stored[idx] = entry;
       else stored.push(entry);
-      sessionStorage.setItem('assessedCandidates', JSON.stringify(stored));
+      try { sessionStorage.setItem('assessedCandidates', JSON.stringify(stored)); } catch {}
       setSavedCandidates([...stored]);
     }
   }, [assessment, githubData]);
@@ -89,6 +91,29 @@ function AssessmentContent() {
       alert("Error asking question: " + err.message);
     } finally {
       setAskingQuestion(false);
+    }
+  };
+
+  const handleAddToCompare = async () => {
+    if (!newCompareUser.trim()) return;
+    setAddingToCompare(true);
+    try {
+      const ghData = await fetchGitHubProfile(newCompareUser.trim(), settings.githubToken);
+      const result = await generateAssessment(ghData, settings, 'employer');
+      const entry: ComparisonCandidate = { username: ghData.username, avatarUrl: ghData.avatarUrl, assessment: result };
+
+      const stored = JSON.parse(sessionStorage.getItem('assessedCandidates') || '[]');
+      const idx = stored.findIndex((c: ComparisonCandidate) => c.username === ghData.username);
+      if (idx >= 0) stored[idx] = entry;
+      else stored.push(entry);
+      try { sessionStorage.setItem('assessedCandidates', JSON.stringify(stored)); } catch {}
+      setSavedCandidates([...stored]);
+      setSelectedForCompare(prev => [...prev, ghData.username]);
+      setNewCompareUser('');
+    } catch (err: any) {
+      alert('Failed to assess: ' + err.message);
+    } finally {
+      setAddingToCompare(false);
     }
   };
 
@@ -688,6 +713,28 @@ function AssessmentContent() {
                     </div>
                   )}
 
+                  <div className="border-t border-[#30363D] pt-4 mb-4">
+                    <p className="text-xs text-[#8B949E] mb-2">Or add a new developer to compare:</p>
+                    <div className="flex gap-2">
+                      <input
+                        value={newCompareUser}
+                        onChange={e => setNewCompareUser(e.target.value)}
+                        placeholder="GitHub username"
+                        className="flex-1 bg-[#0D1117] border border-[#30363D] text-xs rounded-lg py-2.5 px-3 outline-none text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
+                        onKeyDown={e => e.key === 'Enter' && handleAddToCompare()}
+                        disabled={addingToCompare}
+                      />
+                      <button
+                        onClick={handleAddToCompare}
+                        disabled={addingToCompare || !newCompareUser.trim() || selectedForCompare.length >= 5}
+                        className="bg-[#238636] hover:bg-[#2EA043] disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
+                      >
+                        {addingToCompare ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-3 h-3" />}
+                        Assess & Add
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="flex items-center gap-3 mb-4">
                     <input
                       value={compareQuestion}
@@ -719,7 +766,7 @@ function AssessmentContent() {
               ) : (
                 <>
                   <div className={`mb-6 p-4 rounded-xl border text-sm font-bold text-center ${
-                    comparisonResult.verdict.toLowerCase().includes('ineligible')
+                    (comparisonResult.verdict || '').toLowerCase().includes('ineligible')
                       ? 'bg-[#F85149]/20 border-[#F85149]/50 text-[#FF7B72]'
                       : 'bg-[#2EA043]/20 border-[#2EA043]/50 text-[#46E363]'
                   }`}>

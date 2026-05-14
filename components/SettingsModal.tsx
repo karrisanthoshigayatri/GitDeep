@@ -1,19 +1,36 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
+import { AI_PROVIDERS, AIProvider, PromptSize } from '@/lib/types';
 import { Settings, X } from 'lucide-react';
 
 export function SettingsModal() {
   const { settings, updateSettings } = useStore();
   const [isOpen, setIsOpen] = useState(false);
-  
+
   const [localSettings, setLocalSettings] = useState(settings);
+
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
+
+  const handleProviderChange = (providerId: AIProvider) => {
+    const info = AI_PROVIDERS.find(p => p.id === providerId);
+    setLocalSettings(prev => ({
+      ...prev,
+      aiProvider: providerId,
+      apiEndpoint: info?.defaultEndpoint || '',
+      model: info?.defaultModel || '',
+    }));
+  };
 
   const handleSave = () => {
     updateSettings(localSettings);
     setIsOpen(false);
   };
+
+  const currentProvider = AI_PROVIDERS.find(p => p.id === localSettings.aiProvider) || AI_PROVIDERS[0];
 
   if (!isOpen) {
     return (
@@ -56,36 +73,71 @@ export function SettingsModal() {
               <select 
                 className="w-full px-3 py-2 bg-[#0D1117] border border-[#30363D] text-white rounded-md focus:outline-none focus:border-[#58A6FF] focus:ring-1 focus:ring-[#58A6FF]"
                 value={localSettings.aiProvider}
-                onChange={e => setLocalSettings({...localSettings, aiProvider: e.target.value as 'gemini' | 'ollama'})}
+                onChange={e => handleProviderChange(e.target.value as AIProvider)}
               >
-                <option value="gemini">Gemini API</option>
-                <option value="ollama">Local Ollama</option>
+                {AI_PROVIDERS.map(p => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
               </select>
             </div>
 
-            {localSettings.aiProvider === 'gemini' ? (
+            {currentProvider.needsKey && (
               <div>
-                <label className="block text-sm font-bold text-white mb-1">Gemini API Key</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-bold text-white">API Key</label>
+                  {currentProvider.docsUrl && (
+                    <a href={currentProvider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#58A6FF] hover:underline">
+                      Get API key →
+                    </a>
+                  )}
+                </div>
                 <input 
                   type="password"
                   className="w-full px-3 py-2 bg-[#0D1117] border border-[#30363D] text-white rounded-md focus:outline-none focus:border-[#58A6FF] focus:ring-1 focus:ring-[#58A6FF]"
-                  value={localSettings.geminiKey}
-                  onChange={e => setLocalSettings({...localSettings, geminiKey: e.target.value})}
-                  placeholder="Leave empty to use AI Studio's default key"
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="block text-sm font-bold text-white mb-1">Ollama API Endpoint</label>
-                <input 
-                  type="text"
-                  className="w-full px-3 py-2 bg-[#0D1117] border border-[#30363D] text-white rounded-md focus:outline-none focus:border-[#58A6FF] focus:ring-1 focus:ring-[#58A6FF]"
-                  value={localSettings.ollamaEndpoint}
-                  onChange={e => setLocalSettings({...localSettings, ollamaEndpoint: e.target.value})}
-                  placeholder="http://localhost:11434"
+                  value={localSettings.apiKey}
+                  onChange={e => setLocalSettings({...localSettings, apiKey: e.target.value})}
+                  placeholder={`Enter your ${currentProvider.label} key`}
                 />
               </div>
             )}
+
+            {currentProvider.needsEndpoint && (
+              <div>
+                <label className="block text-sm font-bold text-white mb-1">API Endpoint</label>
+                <input 
+                  type="text"
+                  className="w-full px-3 py-2 bg-[#0D1117] border border-[#30363D] text-white rounded-md focus:outline-none focus:border-[#58A6FF] focus:ring-1 focus:ring-[#58A6FF]"
+                  value={localSettings.apiEndpoint}
+                  onChange={e => setLocalSettings({...localSettings, apiEndpoint: e.target.value})}
+                  placeholder={currentProvider.defaultEndpoint || 'https://...'}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-bold text-white mb-1">Model</label>
+              <input 
+                type="text"
+                className="w-full px-3 py-2 bg-[#0D1117] border border-[#30363D] text-white rounded-md focus:outline-none focus:border-[#58A6FF] focus:ring-1 focus:ring-[#58A6FF]"
+                value={localSettings.model}
+                onChange={e => setLocalSettings({...localSettings, model: e.target.value})}
+                placeholder={currentProvider.defaultModel || 'model-name'}
+              />
+              <p className="text-[10px] text-[#8B949E] mt-1">Default: {currentProvider.defaultModel}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-white mb-1">Prompt Size</label>
+              <select
+                className="w-full px-3 py-2 bg-[#0D1117] border border-[#30363D] text-white rounded-md focus:outline-none focus:border-[#58A6FF]"
+                value={localSettings.promptSize}
+                onChange={e => setLocalSettings({...localSettings, promptSize: e.target.value as PromptSize})}
+              >
+                <option value="full">Full (in-depth) — for cloud models like Gemini, GPT-4o, Claude</option>
+                <option value="small">Small (compact) — for local/small models like Phi, Llama 3.2, Groq</option>
+              </select>
+              <p className="text-[10px] text-[#8B949E] mt-1">Full = detailed analysis (~1200 token prompt). Small = ~400 token prompt for limited context models.</p>
+            </div>
           </div>
 
           <div className="mt-8 flex justify-end gap-3">
