@@ -6,7 +6,7 @@ import { fetchGitHubProfile, UserAssessmentData } from '@/lib/github';
 import { generateAssessment, AssessmentMode, AssessmentResult, compareCandidates, ComparisonCandidate, ComparisonResult } from '@/lib/ai';
 import { useStore } from '@/lib/store';
 import { SettingsModal } from '@/components/SettingsModal';
-import { ArrowLeft, Loader2, Send, Linkedin, Twitter, Target, Zap, Shield, AlertTriangle, Code2, Instagram, ExternalLink, GitCompare, X, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, Linkedin, Twitter, Target, Zap, Shield, AlertTriangle, Code2, Instagram, ExternalLink, GitCompare, X, Check, HelpCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 
@@ -242,9 +242,12 @@ function AssessmentContent() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-6 text-xs text-[#8B949E] font-mono">
+          <div className="flex items-center gap-4 text-xs text-[#8B949E] font-mono">
             <span>REPOS: <span className="text-white">{githubData.publicRepos}</span></span>
             <span>FOLLOWERS: <span className="text-[#58A6FF]">{githubData.followers}</span></span>
+            <a href="/help" className="p-1.5 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#8B949E] hover:text-[#58A6FF]" title="Help & Guide">
+              <HelpCircle className="w-4 h-4" />
+            </a>
           </div>
         </div>
       </header>

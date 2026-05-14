@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Github, Briefcase, Code } from 'lucide-react';
+import { Search, Briefcase, Code, HelpCircle, Settings, ArrowUpRight, Github } from 'lucide-react';
 import { SettingsModal } from '@/components/SettingsModal';
+import Image from 'next/image';
+import logo from './logo.png';
 
 export default function Home() {
   const router = useRouter();
@@ -17,87 +19,185 @@ export default function Home() {
   };
 
   return (
-    <main className="flex-1 bg-[#0D1117] flex items-center justify-center p-4 relative">
-      <SettingsModal />
-      
-      <div className="absolute top-0 w-full p-6 flex justify-center items-center opacity-10 select-none pointer-events-none">
-        <Github className="w-96 h-96 absolute -top-10 -right-20 text-[#8B949E]" />
-      </div>
+    <>
+      <div className="grain" />
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-[100dvh] px-4 py-8">
 
-      <div className="bg-[#161B22] rounded-xl shadow-2xl p-8 md:p-12 w-full max-w-2xl relative z-10 border border-[#30363D]">
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white mb-3 flex items-center justify-center gap-3">
-            <Github className="w-10 h-10" />
-            GitHub AI Assessor
-          </h1>
-          <p className="text-lg text-[#8B949E] mb-4">
-            Brutal, honest, and smart analysis of any developer&apos;s GitHub profile.
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <span className="px-2 py-1 bg-[#1F2428] border border-[#30363D] text-[#8B949E] text-xs rounded uppercase font-bold">5-Week Roadmap</span>
-            <span className="px-2 py-1 bg-[#1F2428] border border-[#30363D] text-[#8B949E] text-xs rounded uppercase font-bold">AI SLOP Checks</span>
-            <span className="px-2 py-1 bg-[#1F2428] border border-[#30363D] text-[#8B949E] text-xs rounded uppercase font-bold">Hirability Score</span>
+        {/* Floating Island Nav */}
+        <nav className="animate-fade-up fixed top-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="glass rounded-full px-5 py-2 flex items-center gap-6 shadow-2xl">
+            <span className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+              <Image src={logo} alt="GitDeep" width={20} height={20} className="rounded" />
+              <span className="hidden sm:inline">GitDeep</span>
+            </span>
+            <div className="w-px h-4 bg-white/10" />
+            <a href="/help" className="text-xs text-white/50 hover:text-white premium-transition flex items-center gap-1.5">
+              <HelpCircle className="w-3.5 h-3.5" /> Guide
+            </a>
+            <div className="w-px h-4 bg-white/10" />
+            <SettingsModal inline />
           </div>
-        </div>
+        </nav>
 
-        <form onSubmit={handleAnalyze} className="space-y-8">
-          <div>
-            <label className="block text-sm font-semibold text-[#8B949E] mb-3 uppercase tracking-wider">
-              1. Select Perspective
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setMode('employer')}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${mode === 'employer' ? 'border-[#2EA043] bg-[#238636]/20 text-[#3FB950]' : 'border-[#30363D] hover:border-[#8B949E] text-[#8B949E]'}`}
-              >
-                <Briefcase className="w-8 h-8 mb-2" />
-                <span className="font-medium inline-block">Employer Mode</span>
-                <span className="text-xs text-center mt-1 opacity-80">Brutal hirability & weakness check</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('developer')}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${mode === 'developer' ? 'border-[#58A6FF] bg-[#58A6FF]/20 text-[#58A6FF]' : 'border-[#30363D] hover:border-[#8B949E] text-[#8B949E]'}`}
-              >
-                <Code className="w-8 h-8 mb-2" />
-                <span className="font-medium inline-block">Developer Mode</span>
-                <span className="text-xs text-center mt-1 opacity-80">5-Week Roadmap & profile improvement</span>
-              </button>
-            </div>
+        {/* Hero */}
+        <div className="w-full max-w-5xl mx-auto mt-24 md:mt-32">
+          <div className="text-center mb-12 md:mb-16 animate-fade-up">
+            <span className="inline-block px-3 py-1 rounded-full border border-white/10 bg-white/[0.03] text-[10px] uppercase tracking-[0.2em] text-white/40 font-medium mb-5">
+              AI-Powered Analysis
+            </span>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[0.95] max-w-3xl mx-auto">
+              Assess any GitHub<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#58A6FF] via-[#8957E5] to-[#58A6FF]">profile in seconds</span>
+            </h1>
+            <p className="mt-4 text-sm md:text-base text-white/40 max-w-xl mx-auto leading-relaxed">
+              Brutal honesty meets deep intelligence. Get a comprehensive breakdown of any developer&apos;s work — from code quality to career trajectory.
+            </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-[#8B949E] mb-3 uppercase tracking-wider">
-              2. Enter GitHub Username
-            </label>
-            <div className="relative flex items-center">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-[#8B949E]" />
+          {/* Asymmetrical Bento Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
+
+            {/* Left — Mode Selection (larger card) */}
+            <div className="md:col-span-7 animate-fade-up delay-100">
+              <div className="double-bezel">
+                <div className="inner">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-medium mb-6 block">
+                    1. Select Perspective
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setMode('employer')}
+                      className={`group relative text-left p-5 rounded-xl border premium-transition ${
+                        mode === 'employer'
+                          ? 'border-[#2EA043]/50 bg-[#2EA043]/[0.06]'
+                          : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          mode === 'employer' ? 'bg-[#2EA043]/20' : 'bg-white/[0.04]'
+                        } premium-transition group-hover:scale-105`}>
+                          <Briefcase className={`w-5 h-5 ${mode === 'employer' ? 'text-[#46E363]' : 'text-white/40'}`} />
+                        </div>
+                        <ArrowUpRight className={`w-4 h-4 premium-transition ${
+                          mode === 'employer' ? 'text-[#46E363] opacity-100' : 'text-white/20 opacity-0 group-hover:opacity-40'
+                        }`} />
+                      </div>
+                      <div className="text-sm font-bold text-white mb-1">Employer Mode</div>
+                      <div className="text-xs text-white/40 leading-relaxed">Brutal hirability &amp; weakness check</div>
+                      {mode === 'employer' && (
+                        <div className="absolute bottom-3 right-3 w-5 h-5 rounded-full bg-[#2EA043] flex items-center justify-center">
+                          <div className="w-2 h-2 rounded-full bg-white" />
+                        </div>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => setMode('developer')}
+                      className={`group relative text-left p-5 rounded-xl border premium-transition ${
+                        mode === 'developer'
+                          ? 'border-[#58A6FF]/50 bg-[#58A6FF]/[0.06]'
+                          : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          mode === 'developer' ? 'bg-[#58A6FF]/20' : 'bg-white/[0.04]'
+                        } premium-transition group-hover:scale-105`}>
+                          <Code className={`w-5 h-5 ${mode === 'developer' ? 'text-[#58A6FF]' : 'text-white/40'}`} />
+                        </div>
+                        <ArrowUpRight className={`w-4 h-4 premium-transition ${
+                          mode === 'developer' ? 'text-[#58A6FF] opacity-100' : 'text-white/20 opacity-0 group-hover:opacity-40'
+                        }`} />
+                      </div>
+                      <div className="text-sm font-bold text-white mb-1">Developer Mode</div>
+                      <div className="text-xs text-white/40 leading-relaxed">Mentorship &amp; growth roadmap</div>
+                      {mode === 'developer' && (
+                        <div className="absolute bottom-3 right-3 w-5 h-5 rounded-full bg-[#58A6FF] flex items-center justify-center">
+                          <div className="w-2 h-2 rounded-full bg-white" />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <input
-                type="text"
-                className="w-full pl-11 pr-4 py-4 bg-[#0D1117] border border-[#30363D] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#58A6FF] focus:bg-[#161B22] transition-colors text-lg text-white placeholder-[#484F58]"
-                placeholder="e.g. torvalds"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
             </div>
-          </div>
 
-          <button
-            type="submit"
-            className="w-full bg-[#2EA043] text-white font-bold text-lg py-4 rounded-xl hover:bg-[#238636] transition-colors shadow-lg active:scale-[0.99] uppercase tracking-widest"
-          >
-            Generate Assessment
-          </button>
-        </form>
-        
-        <div className="mt-8 pt-6 border-t border-[#30363D] text-center text-sm text-[#8B949E]">
-          <p>Privacy First: No DB, session-based only. Set your token/keys in Settings ⚙️.</p>
+            {/* Right Top — Username Input */}
+            <div className="md:col-span-5 animate-fade-up delay-200">
+              <div className="double-bezel h-full">
+                <div className="inner h-full flex flex-col">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-medium mb-4 block">
+                    2. Enter Username
+                  </span>
+                  <form onSubmit={handleAnalyze} className="flex-1 flex flex-col justify-between gap-4">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Search className="w-4 h-4 text-white/30" />
+                      </div>
+                      <input
+                        type="text"
+                        className="w-full h-full min-h-[56px] pl-11 pr-4 bg-white/[0.03] border border-white/[0.08] rounded-xl focus:outline-none focus:border-[#58A6FF]/50 focus:bg-white/[0.06] premium-transition text-sm text-white placeholder-white/20 font-mono"
+                        placeholder="e.g. torvalds"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="group relative w-full overflow-hidden rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-white/20 premium-transition btn-press"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#58A6FF]/10 to-[#8957E5]/10 opacity-0 group-hover:opacity-100 premium-transition" />
+                      <div className="relative flex items-center justify-between px-6 py-4">
+                        <span className="text-sm font-bold text-white/80 group-hover:text-white premium-transition">
+                          Generate Assessment
+                        </span>
+                        <div className="w-8 h-8 rounded-full bg-white/[0.06] group-hover:bg-white/[0.1] flex items-center justify-center premium-transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+                          <ArrowUpRight className="w-4 h-4 text-white/60 group-hover:text-white premium-transition" />
+                        </div>
+                      </div>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom — Tagline / Info card */}
+            <div className="md:col-span-12 animate-fade-up delay-300">
+              <div className="double-bezel">
+                <div className="inner py-3 px-5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-4 text-xs text-white/30">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#58A6FF]" />
+                      No database
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#2EA043]" />
+                      Session-based
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#8957E5]" />
+                      Privacy first
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex -space-x-2">
+                      {['gemini', 'openai', 'anthropic', 'ollama'].map((p, i) => (
+                        <div key={p} className="w-6 h-6 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-[8px] text-white/40 font-mono">
+                          {p.slice(0, 2)}
+                        </div>
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-white/20">12 providers supported</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
-    </main>
+    </>
   );
 }
