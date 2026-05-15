@@ -64,8 +64,10 @@ const DotField = memo<DotFieldProps>(({
     }
 
     function doResize() {
-      if (!canvas) return;
-      const rect = canvas.parentElement.getBoundingClientRect();
+      if (!canvas || !ctx) return;
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      const rect = parent.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
 
@@ -85,7 +87,7 @@ const DotField = memo<DotFieldProps>(({
       buildDots(w, h);
     }
 
-    function buildDots(w, h) {
+    function buildDots(w: number, h: number) {
       const p = propsRef.current;
       const step = p.dotRadius + p.dotSpacing;
       const cols = Math.floor(w / step);
@@ -105,7 +107,7 @@ const DotField = memo<DotFieldProps>(({
       dotsRef.current = dots;
     }
 
-    function onMouseMove(e) {
+    function onMouseMove(e: MouseEvent) {
       const s = sizeRef.current;
       mouseRef.current.x = e.pageX - s.offsetX;
       mouseRef.current.y = e.pageY - s.offsetY;
