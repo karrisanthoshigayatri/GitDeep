@@ -4,7 +4,23 @@ import './DotField.css';
 
 const TWO_PI = Math.PI * 2;
 
-const DotField = memo(({
+interface DotFieldProps {
+  dotRadius?: number;
+  dotSpacing?: number;
+  cursorRadius?: number;
+  cursorForce?: number;
+  bulgeOnly?: boolean;
+  bulgeStrength?: number;
+  glowRadius?: number;
+  sparkle?: boolean;
+  waveAmplitude?: number;
+  gradientFrom?: string;
+  gradientTo?: string;
+  glowColor?: string;
+  [key: string]: any;
+}
+
+const DotField = memo<DotFieldProps>(({
   dotRadius = 1.5,
   dotSpacing = 14,
   cursorRadius = 500,
