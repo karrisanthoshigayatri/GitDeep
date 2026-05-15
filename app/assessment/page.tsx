@@ -32,6 +32,7 @@ function AssessmentContent() {
   const [compareQuestion, setCompareQuestion] = useState('');
   const [newCompareUser, setNewCompareUser] = useState('');
   const [addingToCompare, setAddingToCompare] = useState(false);
+  const [showCompletenessWarning, setShowCompletenessWarning] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -57,6 +58,17 @@ function AssessmentContent() {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, mode, settings.githubToken, settings.aiProvider, settings.apiKey, settings.apiEndpoint, settings.model]);
+
+  useEffect(() => {
+    if (assessment) {
+      const hasMissing = !assessment.summary || assessment.summary.length < 20 ||
+        !assessment.detailedReport || assessment.detailedReport.length < 200 ||
+        !assessment.repoAssessments || assessment.repoAssessments.length === 0 ||
+        !assessment.timeline || assessment.timeline.length === 0 ||
+        !assessment.swot.strengths || assessment.swot.strengths.length === 0;
+      setShowCompletenessWarning(hasMissing);
+    }
+  }, [assessment]);
 
   useEffect(() => {
     const stored = JSON.parse(sessionStorage.getItem('assessedCandidates') || '[]');
@@ -171,12 +183,78 @@ function AssessmentContent() {
 
   if (loading) {
     return (
-      <div className="flex-1 min-h-screen bg-[#0D1117] flex flex-col items-center justify-center space-y-6">
-        <Loader2 className="w-12 h-12 animate-spin text-[#58A6FF]" />
-        <h2 className="text-xl font-medium text-[#C9D1D9] animate-pulse font-mono tracking-tighter">
-          [ ANALYZING {username?.toUpperCase()} ]
-        </h2>
-        <p className="text-sm text-[#8B949E]">Fetching repos, PRs, and questioning life choices...</p>
+      <div className="flex-1 min-h-screen bg-[#0D1117] pb-20">
+        <header className="bg-[#161B22] border-b border-[#30363D] sticky top-0 z-40 shadow-md">
+          <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-9 h-9 bg-[#21262D] border border-[#30363D] rounded-md animate-pulse" />
+              <div className="h-5 w-48 bg-[#21262D] rounded animate-pulse" />
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left skeleton */}
+          <aside className="lg:col-span-3 space-y-6">
+            <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-xl">
+              <div className="h-3 w-20 bg-[#21262D] rounded animate-pulse mb-4" />
+              <div className="space-y-3 mb-6">
+                <div className="h-3 w-full bg-[#21262D] rounded animate-pulse" />
+                <div className="h-3 w-3/4 bg-[#21262D] rounded animate-pulse" />
+                <div className="h-3 w-5/6 bg-[#21262D] rounded animate-pulse" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="h-16 bg-[#0D1117] border border-[#30363D] rounded animate-pulse" />
+                <div className="h-16 bg-[#0D1117] border border-[#30363D] rounded animate-pulse" />
+                <div className="h-16 bg-[#0D1117] border border-[#30363D] rounded col-span-2 animate-pulse" />
+              </div>
+              <div className="h-10 w-32 bg-[#21262D] rounded animate-pulse mb-4" />
+              <div className="space-y-2">
+                <div className="h-6 w-24 bg-[#21262D] rounded animate-pulse" />
+                <div className="flex gap-2">
+                  <div className="h-5 w-16 bg-[#21262D] rounded animate-pulse" />
+                  <div className="h-5 w-20 bg-[#21262D] rounded animate-pulse" />
+                  <div className="h-5 w-14 bg-[#21262D] rounded animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Center skeleton */}
+          <section className="lg:col-span-6 space-y-6">
+            <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-2xl">
+              <div className="h-5 w-48 bg-[#21262D] rounded animate-pulse mb-4" />
+              <div className="space-y-2 mb-8">
+                <div className="h-3 w-full bg-[#21262D] rounded animate-pulse" />
+                <div className="h-3 w-full bg-[#21262D] rounded animate-pulse" />
+                <div className="h-3 w-3/4 bg-[#21262D] rounded animate-pulse" />
+                <div className="h-3 w-5/6 bg-[#21262D] rounded animate-pulse" />
+              </div>
+              <div className="h-5 w-36 bg-[#21262D] rounded animate-pulse mb-4" />
+              <div className="space-y-4 relative pl-8">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-[#21262D] border-4 border-[#161B22] animate-pulse shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 w-32 bg-[#21262D] rounded animate-pulse" />
+                      <div className="h-3 w-48 bg-[#21262D] rounded animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Right skeleton */}
+          <aside className="lg:col-span-3 space-y-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-[#161B22] border border-[#30363D] rounded-xl p-4 shadow-lg text-center">
+                <div className="h-3 w-28 bg-[#21262D] rounded animate-pulse mx-auto mb-3" />
+                <div className="h-48 bg-[#21262D] rounded animate-pulse" />
+              </div>
+            ))}
+          </aside>
+        </main>
       </div>
     );
   }
@@ -186,13 +264,13 @@ function AssessmentContent() {
       <div className="flex-1 min-h-screen bg-[#0D1117] flex flex-col items-center justify-center max-w-2xl mx-auto text-center px-4">
         <div className="bg-[#F85149]/20 text-[#F85149] p-6 rounded-xl border border-[#F85149]/50 mb-6 w-full shadow-[0_0_15px_rgba(248,81,73,0.1)]">
           <h2 className="font-bold text-lg mb-2 font-mono flex items-center justify-center gap-2">
-            <AlertTriangle className="w-5 h-5"/> ANALYSIS FAILED
+            <AlertTriangle className="w-5 h-5" aria-hidden="true"/> ANALYSIS FAILED
           </h2>
           <p className="font-mono text-sm">{error}</p>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/')} className="flex items-center gap-2 text-[#8B949E] hover:text-white font-medium transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Go Back
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Go Back
           </button>
           <SettingsModal />
         </div>
@@ -233,8 +311,8 @@ function AssessmentContent() {
       <header className="bg-[#161B22] border-b border-[#30363D] sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => router.push('/')} className="p-2 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#C9D1D9]">
-              <ArrowLeft className="w-4 h-4" />
+            <button onClick={() => router.push('/')} aria-label="Back to homepage" className="p-2 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#C9D1D9]">
+              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             </button>
             <div className="flex items-center gap-3">
               <h1 className="font-bold text-lg text-white truncate font-mono">
@@ -248,12 +326,29 @@ function AssessmentContent() {
           <div className="flex items-center gap-4 text-xs text-[#8B949E] font-mono">
             <span>REPOS: <span className="text-white">{githubData.publicRepos}</span></span>
             <span>FOLLOWERS: <span className="text-[#58A6FF]">{githubData.followers}</span></span>
-            <a href="/help" className="p-1.5 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#8B949E] hover:text-[#58A6FF]" title="Help & Guide">
-              <HelpCircle className="w-4 h-4" />
+            <a href="/help" aria-label="Help guide" className="p-1.5 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#8B949E] hover:text-[#58A6FF]" title="Help & Guide">
+              <HelpCircle className="w-4 h-4" aria-hidden="true" />
             </a>
           </div>
         </div>
       </header>
+
+      {showCompletenessWarning && (
+        <div className="max-w-7xl mx-auto px-4 pt-4">
+          <div className="bg-[#E3B341]/10 border border-[#E3B341]/30 rounded-xl p-4 flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span className="text-[#E3B341] text-lg leading-none mt-0.5" aria-hidden="true">⚠</span>
+              <div>
+                <p className="text-sm font-bold text-[#E3B341]">Some assessment sections may be incomplete</p>
+                <p className="text-xs text-[#C9D1D9] mt-1">For best results, use Gemini 2.5 Flash (1M context) or a model with 32K+ context and high token output limits. <a href="/settings" className="text-[#58A6FF] hover:underline">Adjust settings</a></p>
+              </div>
+            </div>
+            <button onClick={() => setShowCompletenessWarning(false)} className="p-1 hover:bg-[#E3B341]/20 rounded transition-colors text-[#E3B341]/60 hover:text-[#E3B341]" aria-label="Dismiss warning">
+              <X className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
         
@@ -329,14 +424,14 @@ function AssessmentContent() {
                 onClick={() => { setShowCompare(true); setComparisonResult(null); setSelectedForCompare([]); }}
                 className="w-full flex items-center justify-center gap-2 bg-[#1F6FEB] hover:bg-[#388BFD] text-white text-xs font-bold py-3 px-4 rounded-lg transition-colors uppercase tracking-widest"
               >
-                <GitCompare className="w-4 h-4" /> Compare Candidates
+                <GitCompare className="w-4 h-4" aria-hidden="true" /> Compare Candidates
                 {savedCandidates.length > 0 && <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px]">{savedCandidates.length} saved</span>}
               </button>
             </div>
           )}
 
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-5 shadow-lg">
-            <h3 className="font-bold text-white text-xs uppercase mb-4 tracking-widest flex items-center gap-2"><Target className="w-4 h-4 text-[#58A6FF]"/> Contact Graph</h3>
+            <h3 className="font-bold text-white text-xs uppercase mb-4 tracking-widest flex items-center gap-2"><Target className="w-4 h-4 text-[#58A6FF]" aria-hidden="true"/> Contact Graph</h3>
             <ul className="space-y-3 text-xs font-mono">
               <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
                 <span className="text-[#8B949E]">GitHub</span>
@@ -350,25 +445,25 @@ function AssessmentContent() {
               )}
               {githubData.linkedinUrl && (
                 <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
-                  <span className="text-[#8B949E] flex items-center gap-1"><Linkedin className="w-3 h-3"/> LinkedIn</span>
+                  <span className="text-[#8B949E] flex items-center gap-1"><Linkedin className="w-3 h-3" aria-hidden="true"/> LinkedIn</span>
                   <a href={githubData.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold max-w-[150px] truncate">Profile</a>
                 </li>
               )}
               {githubData.leetcodeUrl && (
                 <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
-                  <span className="text-[#8B949E] flex items-center gap-1"><Code2 className="w-3 h-3"/> LeetCode</span>
+                  <span className="text-[#8B949E] flex items-center gap-1"><Code2 className="w-3 h-3" aria-hidden="true"/> LeetCode</span>
                   <a href={githubData.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold max-w-[150px] truncate">Profile</a>
                 </li>
               )}
               {githubData.instagramUrl && (
                 <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
-                  <span className="text-[#8B949E] flex items-center gap-1"><Instagram className="w-3 h-3"/> Instagram</span>
+                  <span className="text-[#8B949E] flex items-center gap-1"><Instagram className="w-3 h-3" aria-hidden="true"/> Instagram</span>
                   <a href={githubData.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold max-w-[150px] truncate">Profile</a>
                 </li>
               )}
               {githubData.twitterUsername && (
                 <li className="flex justify-between items-center py-2 border-b border-[#30363D] last:border-0">
-                  <span className="text-[#8B949E] flex items-center gap-1"><Twitter className="w-3 h-3"/> Twitter</span>
+                  <span className="text-[#8B949E] flex items-center gap-1"><Twitter className="w-3 h-3" aria-hidden="true"/> Twitter</span>
                   <a href={`https://twitter.com/${githubData.twitterUsername}`} target="_blank" rel="noopener noreferrer" className="text-[#58A6FF] hover:underline font-bold max-w-[150px] truncate">@{githubData.twitterUsername}</a>
                 </li>
               )}
@@ -379,7 +474,7 @@ function AssessmentContent() {
         {/* Center Main: Detailed Report & SWOT */}
         <section className="lg:col-span-6 space-y-6">
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-2xl">
-            <h2 className="text-lg font-bold text-white mb-2 font-mono uppercase tracking-widest"><Zap className="inline w-5 h-5 text-[#E3B341] pb-1"/> Executive Summary</h2>
+            <h2 className="text-lg font-bold text-white mb-2 font-mono uppercase tracking-widest"><Zap className="inline w-5 h-5 text-[#E3B341] pb-1" aria-hidden="true"/> Executive Summary</h2>
             <p className="text-[#C9D1D9] text-sm leading-relaxed mb-6">{assessment.summary}</p>
 
             <div className="mb-8 relative">
@@ -446,7 +541,7 @@ function AssessmentContent() {
                 <div className="space-y-6">
                   {/* Slope Detection */}
                   <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4">
-                    <h3 className="text-sm font-bold text-[#58A6FF] uppercase mb-3 flex items-center gap-2"><Target className="w-4 h-4"/> Career Slope Detection</h3>
+                    <h3 className="text-sm font-bold text-[#58A6FF] uppercase mb-3 flex items-center gap-2"><Target className="w-4 h-4" aria-hidden="true"/> Career Slope Detection</h3>
                     <div className="grid grid-cols-3 gap-2 mb-3">
                       <div className="bg-[#161B22] border border-[#30363D] rounded p-2 text-center">
                         <span className="block text-[#8B949E] text-[10px] uppercase">Trajectory</span>
@@ -466,7 +561,7 @@ function AssessmentContent() {
 
                   {/* Buzzword Analyzer */}
                   <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4">
-                    <h3 className="text-sm font-bold text-[#E3B341] uppercase mb-3 flex items-center gap-2"><Zap className="w-4 h-4"/> Buzzword vs Reality</h3>
+                    <h3 className="text-sm font-bold text-[#E3B341] uppercase mb-3 flex items-center gap-2"><Zap className="w-4 h-4" aria-hidden="true"/> Buzzword vs Reality</h3>
                     <div className="flex justify-between items-center mb-3">
                       <span className="text-xs text-[#C9D1D9]"><strong>Verdict:</strong> {assessment.buzzwordAnalysis.verdict}</span>
                       <span className="text-[10px] bg-[#161B22] border border-[#30363D] px-2 py-1 rounded">Ratio: {assessment.buzzwordAnalysis.buzzwordToRealityRatio > 10 ? (assessment.buzzwordAnalysis.buzzwordToRealityRatio / 10).toFixed(1) : parseFloat(assessment.buzzwordAnalysis.buzzwordToRealityRatio.toString()).toFixed(1)}/10</span>
@@ -490,7 +585,7 @@ function AssessmentContent() {
 
                   {/* Behavioral Analysis */}
                   <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4">
-                    <h3 className="text-sm font-bold text-[#A371F7] uppercase mb-3 flex items-center gap-2"><Shield className="w-4 h-4"/> Arrogance vs Confidence</h3>
+                    <h3 className="text-sm font-bold text-[#A371F7] uppercase mb-3 flex items-center gap-2"><Shield className="w-4 h-4" aria-hidden="true"/> Arrogance vs Confidence</h3>
                     <div className="grid grid-cols-2 gap-4 mb-3">
                        <div className="flex items-center justify-between bg-[#161B22] border border-[#30363D] rounded p-2">
                         <span className="text-[#8B949E] text-[10px] uppercase">Confidence</span>
@@ -520,7 +615,7 @@ function AssessmentContent() {
           {assessment.repoAssessments && assessment.repoAssessments.length > 0 && (
             <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-2xl">
               <h2 className="text-sm font-bold text-white uppercase tracking-widest font-mono mb-4 flex items-center gap-2">
-                <Code2 className="w-4 h-4 text-[#58A6FF]" /> Per-Repo Assessment
+                <Code2 className="w-4 h-4 text-[#58A6FF]" aria-hidden="true" /> Per-Repo Assessment
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {assessment.repoAssessments.map((repo, idx) => {
@@ -530,7 +625,7 @@ function AssessmentContent() {
                     <div key={idx} className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4 hover:border-[#8B949E] transition-colors">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2 min-w-0">
-                          <Code2 className="w-4 h-4 text-[#8B949E] shrink-0" />
+                          <Code2 className="w-4 h-4 text-[#8B949E] shrink-0" aria-hidden="true" />
                           <a
                             href={`https://github.com/${username}/${repo.repoName}`}
                             target="_blank"
@@ -539,7 +634,7 @@ function AssessmentContent() {
                           >
                             {repo.repoName}
                           </a>
-                          <ExternalLink className="w-3 h-3 text-[#8B949E] shrink-0" />
+                          <ExternalLink className="w-3 h-3 text-[#8B949E] shrink-0" aria-hidden="true" />
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className={`text-lg font-mono font-black ${scoreColor}`}>{(repo.repoScore ?? 0).toFixed(1)}</span>
@@ -571,7 +666,7 @@ function AssessmentContent() {
           {assessment.mentorshipPlan && mode === 'developer' && (
             <div className="bg-[#161B22] border border-[#1F6FEB]/50 rounded-xl shadow-2xl overflow-hidden">
               <div className="p-4 border-b border-[#1F6FEB]/30 bg-[#1F6FEB]/10 sticky top-0 z-10 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[#58A6FF]" />
+                <Zap className="w-4 h-4 text-[#58A6FF]" aria-hidden="true" />
                 <h2 className="text-sm font-bold text-white uppercase tracking-widest font-mono">Mentorship & Upgrade Plan</h2>
               </div>
               <div className="p-6">
@@ -585,9 +680,9 @@ function AssessmentContent() {
         </section>
 
         {/* Right Sidebar: Radars & Langs & Ask */}
-        <aside className="lg:col-span-3 space-y-6">
+        <aside className="lg:col-span-3 space-y-6 lg:sticky lg:top-24 lg:self-start">
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-4 shadow-lg text-center">
-            <h3 className="font-bold text-white text-xs uppercase mb-1 tracking-widest"><Shield className="w-4 h-4 inline pb-0.5 text-[#2EA043]"/> Core Competencies</h3>
+            <h3 className="font-bold text-white text-xs uppercase mb-1 tracking-widest"><Shield className="w-4 h-4 inline pb-0.5 text-[#2EA043]" aria-hidden="true"/> Core Competencies</h3>
             <p className="text-[10px] text-[#8B949E] mb-2">Capabilities based on profile</p>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -602,7 +697,7 @@ function AssessmentContent() {
           </div>
 
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-4 shadow-lg text-center">
-            <h3 className="font-bold text-[#FF7B72] text-xs uppercase mb-1 tracking-widest"><AlertTriangle className="w-4 h-4 inline pb-0.5"/> Risk Factors</h3>
+            <h3 className="font-bold text-[#FF7B72] text-xs uppercase mb-1 tracking-widest"><AlertTriangle className="w-4 h-4 inline pb-0.5" aria-hidden="true"/> Risk Factors</h3>
             <p className="text-[10px] text-[#8B949E] mb-2">Vulnerabilities in behavior/code</p>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -648,13 +743,17 @@ function AssessmentContent() {
           <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-4 border-dashed relative">
             <h3 className="font-bold text-white mb-2 uppercase text-[11px] tracking-widest font-mono text-[#E3B341]">Consult the AI</h3>
             <p className="text-[10px] text-[#8B949E] mb-4 leading-relaxed">Ask specific questions about this developer&apos;s suitability for a role or specific tech stacks.</p>
-            <form onSubmit={handleAskQuestion} className="relative">
+              <form onSubmit={handleAskQuestion} className="relative">
               <input 
                 type="text" 
+                name="custom-question"
+                autoComplete="off"
+                spellCheck={false}
+                aria-label="Ask a custom question about this developer"
                 value={customQuestion}
                 onChange={e => setCustomQuestion(e.target.value)}
-                placeholder="Good fit for Startup CTO?"
-                className="w-full bg-[#161B22] border border-[#30363D] text-[11px] rounded py-3 pl-3 pr-10 outline-none text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
+                placeholder="Good fit for Startup CTO?…"
+                className="w-full bg-[#161B22] border border-[#30363D] text-[11px] rounded py-3 pl-3 pr-10 outline-none focus-visible:ring-2 focus-visible:ring-[#58A6FF] text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
                 disabled={askingQuestion}
               />
               <button 
@@ -662,7 +761,7 @@ function AssessmentContent() {
                 disabled={askingQuestion || !customQuestion.trim()}
                 className="absolute right-2 top-2 text-[#58A6FF] disabled:opacity-50 hover:text-white transition-colors"
                >
-                {askingQuestion ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {askingQuestion ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Send className="w-4 h-4" aria-hidden="true" />}
               </button>
             </form>
           </div>
@@ -671,14 +770,14 @@ function AssessmentContent() {
       </main>
 
       {showCompare && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center pt-8 pb-8 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center pt-8 pb-8 overflow-y-auto" style={{ overscrollBehaviorY: 'contain' }}>
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-[#161B22] z-10 p-4 border-b border-[#30363D] flex items-center justify-between">
               <h2 className="text-sm font-bold text-white uppercase tracking-widest font-mono flex items-center gap-2">
-                <GitCompare className="w-4 h-4 text-[#58A6FF]" /> Compare Candidates
+                <GitCompare className="w-4 h-4 text-[#58A6FF]" aria-hidden="true" /> Compare Candidates
               </h2>
-              <button onClick={() => setShowCompare(false)} className="p-1.5 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#C9D1D9]">
-                <X className="w-4 h-4" />
+              <button onClick={() => setShowCompare(false)} aria-label="Close compare modal" className="p-1.5 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#C9D1D9]">
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
 
@@ -703,16 +802,16 @@ function AssessmentContent() {
                               );
                             }}
                             disabled={disabled && !selected}
-                            className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
+                            className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors duration-300 ${
                               selected
                                 ? 'bg-[#1F6FEB]/20 border-[#1F6FEB] text-white'
                                 : 'bg-[#0D1117] border-[#30363D] text-[#8B949E] hover:border-[#8B949E] disabled:opacity-30'
                             }`}
                           >
-                            <img src={c.avatarUrl} alt={c.username} className="w-12 h-12 rounded-full border-2 border-[#30363D]" />
+                            <img src={c.avatarUrl} alt={c.username} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-full border-2 border-[#30363D]" />
                             <span className="text-xs font-bold truncate max-w-full">@{c.username}</span>
                             <span className="text-[10px] font-mono">{(c.assessment.hirabilityScore ?? 0).toFixed(1)}/10</span>
-                            {selected && <Check className="w-4 h-4 text-[#58A6FF]" />}
+                            {selected && <Check className="w-4 h-4 text-[#58A6FF]" aria-hidden="true" />}
                           </button>
                         );
                       })}
@@ -726,7 +825,11 @@ function AssessmentContent() {
                         value={newCompareUser}
                         onChange={e => setNewCompareUser(e.target.value)}
                         placeholder="GitHub username"
-                        className="flex-1 bg-[#0D1117] border border-[#30363D] text-xs rounded-lg py-2.5 px-3 outline-none text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
+                        name="new-compare-user"
+                        autoComplete="off"
+                        spellCheck={false}
+                        aria-label="GitHub username to compare"
+                        className="flex-1 bg-[#0D1117] border border-[#30363D] text-xs rounded-lg py-2.5 px-3 outline-none focus-visible:ring-2 focus-visible:ring-[#58A6FF] text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
                         onKeyDown={e => e.key === 'Enter' && handleAddToCompare()}
                         disabled={addingToCompare}
                       />
@@ -735,7 +838,7 @@ function AssessmentContent() {
                         disabled={addingToCompare || !newCompareUser.trim() || selectedForCompare.length >= 5}
                         className="bg-[#238636] hover:bg-[#2EA043] disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
                       >
-                        {addingToCompare ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-3 h-3" />}
+                        {addingToCompare ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <ExternalLink className="w-3 h-3" aria-hidden="true" />}
                         Assess & Add
                       </button>
                     </div>
@@ -746,7 +849,11 @@ function AssessmentContent() {
                       value={compareQuestion}
                       onChange={e => setCompareQuestion(e.target.value)}
                       placeholder="Ask AI: which candidate is best for a specific role?"
-                      className="flex-1 bg-[#0D1117] border border-[#30363D] text-xs rounded-lg py-2.5 px-3 outline-none text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
+                      name="compare-question"
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-label="Question for candidate comparison"
+                      className="flex-1 bg-[#0D1117] border border-[#30363D] text-xs rounded-lg py-2.5 px-3 outline-none focus-visible:ring-2 focus-visible:ring-[#58A6FF] text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
                     />
                     <button
                       onClick={async () => {
@@ -765,7 +872,7 @@ function AssessmentContent() {
                       disabled={selectedForCompare.length < 2 || comparing}
                       className="bg-[#1F6FEB] hover:bg-[#388BFD] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-5 py-2.5 rounded-lg transition-colors uppercase tracking-widest"
                     >
-                      {comparing ? <Loader2 className="w-4 h-4 animate-spin" /> : `Compare ${selectedForCompare.length} Candidates`}
+                      {comparing ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : `Compare ${selectedForCompare.length} Candidates`}
                     </button>
                   </div>
                 </>
@@ -787,7 +894,7 @@ function AssessmentContent() {
                           {comparisonResult.candidates.map(c => (
                             <th key={c.username} className="text-center p-3 border-b border-[#30363D]">
                               <div className="flex flex-col items-center gap-1">
-                                <img src={savedCandidates.find(s => s.username === c.username)?.avatarUrl || ''} alt={c.username} className="w-10 h-10 rounded-full border-2 border-[#30363D]" />
+                                <img src={savedCandidates.find(s => s.username === c.username)?.avatarUrl || ''} alt={c.username} width={40} height={40} loading="lazy" className="w-10 h-10 rounded-full border-2 border-[#30363D]" />
                                 <span className="text-[#58A6FF] font-bold">@{c.username}</span>
                               </div>
                             </th>
@@ -857,8 +964,12 @@ function AssessmentContent() {
                     <input
                       value={compareQuestion}
                       onChange={e => setCompareQuestion(e.target.value)}
-                      placeholder="Ask AI a follow-up about these candidates..."
-                      className="flex-1 bg-[#0D1117] border border-[#30363D] text-xs rounded-lg py-2.5 px-3 outline-none text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
+                      placeholder="Ask AI a follow-up about these candidates…"
+                      name="compare-followup"
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-label="Follow-up question about candidates"
+                      className="flex-1 bg-[#0D1117] border border-[#30363D] text-xs rounded-lg py-2.5 px-3 outline-none focus-visible:ring-2 focus-visible:ring-[#58A6FF] text-white focus:border-[#58A6FF] transition-colors placeholder-[#484F58]"
                     />
                     <button
                       onClick={async () => {
@@ -876,7 +987,7 @@ function AssessmentContent() {
                       disabled={comparing}
                       className="bg-[#1F6FEB] hover:bg-[#388BFD] disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors uppercase tracking-widest flex items-center gap-2"
                     >
-                      {comparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-3 h-3" />} Ask AI
+                      {comparing ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Send className="w-3 h-3" aria-hidden="true" />} Ask AI
                     </button>
                     <button
                       onClick={() => setComparisonResult(null)}

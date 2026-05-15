@@ -25,9 +25,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  themeColor: '#050505',
+};
+
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="en" className={`${display.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${display.variable} ${mono.variable}`} style={{ colorScheme: 'dark' }} suppressHydrationWarning>
       <body className="font-display bg-[#050505] text-[#C9D1D9] min-h-[100dvh] flex flex-col antialiased">
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-[#58A6FF]/[0.03] blur-[120px]" />

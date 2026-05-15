@@ -56,6 +56,7 @@ const DotField = memo<DotFieldProps>(({
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let resizeTimer: NodeJS.Timeout;
 
     function resize() {
@@ -130,6 +131,7 @@ const DotField = memo<DotFieldProps>(({
 
     function tick() {
       if (!ctx) return;
+      if (prefersReducedMotion) return;
       frameCount++;
       const dots = dotsRef.current;
       const m = mouseRef.current;
@@ -229,7 +231,9 @@ const DotField = memo<DotFieldProps>(({
     doResize();
     window.addEventListener('resize', resize);
     window.addEventListener('mousemove', onMouseMove, { passive: true });
-    rafRef.current = requestAnimationFrame(tick);
+    if (!prefersReducedMotion) {
+      rafRef.current = requestAnimationFrame(tick);
+    }
 
     rebuildRef.current = () => {
       const { w, h } = sizeRef.current;

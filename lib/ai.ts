@@ -159,7 +159,7 @@ async function callAnthropic(endpoint: string, apiKey: string, model: string, sy
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, system: systemMsg, messages: [{ role: 'user', content: userPrompt }], max_tokens: 4096, temperature: 0 }),
+      body: JSON.stringify({ model, system: systemMsg, messages: [{ role: 'user', content: userPrompt }], max_tokens: 16384, temperature: 0 }),
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`Anthropic error (${response.status}): ${await response.text()}`);
@@ -249,11 +249,33 @@ export async function generateAssessment(
       throw new Error('AI echoed input data instead of generating assessment');
     }
     
-    return normalizeAssessment(parsed);
+    const result = normalizeAssessment(parsed);
+    const validation = validateAssessmentComplete(result);
+    if (!validation.complete) {
+      throw new Error(`Assessment incomplete: ${validation.reason}. Switch to Gemini 2.5 Flash or a model with 32K+ context for complete results.`);
+    }
+    return result;
   } catch (e: any) {
     const suggestion = getAISuggestion(e, settings.aiProvider);
     throw new Error(suggestion);
   }
+}
+
+function validateAssessmentComplete(result: AssessmentResult): { complete: boolean; reason: string } {
+  const issues: string[] = [];
+  if (!result.summary || result.summary.length < 20) issues.push('summary missing or too short');
+  if (!result.detailedReport || result.detailedReport.length < 200) issues.push('detailed report truncated');
+  if (!result.repoAssessments || result.repoAssessments.length === 0) issues.push('repo assessments missing');
+  if (!result.timeline || result.timeline.length === 0) issues.push('career timeline missing');
+  if (!result.swot.strengths || result.swot.strengths.length === 0) issues.push('SWOT strengths empty');
+  if (!result.swot.weaknesses || result.swot.weaknesses.length === 0) issues.push('SWOT weaknesses empty');
+  if (!result.hirabilityRoles || result.hirabilityRoles.length === 0) issues.push('hirability roles missing');
+  if (!result.tags || result.tags.length === 0) issues.push('tags missing');
+
+  if (issues.length >= 3) {
+    return { complete: false, reason: issues.slice(0, 3).join('; ') };
+  }
+  return { complete: true, reason: '' };
 }
 
 function normalizeAssessment(raw: any): AssessmentResult {

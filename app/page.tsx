@@ -45,7 +45,7 @@ export default function Home() {
             </span>
             <div className="w-px h-4 bg-white/10" />
             <a href="/help" className="text-xs text-white/50 hover:text-white premium-transition flex items-center gap-1.5">
-              <HelpCircle className="w-3.5 h-3.5" /> Guide
+               <HelpCircle className="w-3.5 h-3.5" aria-hidden="true" /> Guide
             </a>
             <div className="w-px h-4 bg-white/10" />
             <SettingsModal inline />
@@ -90,11 +90,11 @@ export default function Home() {
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                           mode === 'employer' ? 'bg-[#2EA043]/20' : 'bg-white/[0.04]'
                         } premium-transition group-hover:scale-105`}>
-                          <Briefcase className={`w-5 h-5 ${mode === 'employer' ? 'text-[#46E363]' : 'text-white/40'}`} />
+                          <Briefcase className={`w-5 h-5 ${mode === 'employer' ? 'text-[#46E363]' : 'text-white/40'}`} aria-hidden="true" />
                         </div>
                         <ArrowUpRight className={`w-4 h-4 premium-transition ${
                           mode === 'employer' ? 'text-[#46E363] opacity-100' : 'text-white/20 opacity-0 group-hover:opacity-40'
-                        }`} />
+                        }`} aria-hidden="true" />
                       </div>
                       <div className="text-sm font-bold text-white mb-1">Employer Mode</div>
                       <div className="text-xs text-white/40 leading-relaxed">Brutal hirability &amp; weakness check</div>
@@ -117,11 +117,11 @@ export default function Home() {
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                           mode === 'developer' ? 'bg-[#58A6FF]/20' : 'bg-white/[0.04]'
                         } premium-transition group-hover:scale-105`}>
-                          <Code className={`w-5 h-5 ${mode === 'developer' ? 'text-[#58A6FF]' : 'text-white/40'}`} />
+                          <Code className={`w-5 h-5 ${mode === 'developer' ? 'text-[#58A6FF]' : 'text-white/40'}`} aria-hidden="true" />
                         </div>
                         <ArrowUpRight className={`w-4 h-4 premium-transition ${
                           mode === 'developer' ? 'text-[#58A6FF] opacity-100' : 'text-white/20 opacity-0 group-hover:opacity-40'
-                        }`} />
+                        }`} aria-hidden="true" />
                       </div>
                       <div className="text-sm font-bold text-white mb-1">Developer Mode</div>
                       <div className="text-xs text-white/40 leading-relaxed">Mentorship &amp; growth roadmap</div>
@@ -146,12 +146,15 @@ export default function Home() {
                   <form onSubmit={handleAnalyze} className="flex-1 flex flex-col justify-between gap-4">
                     <div className="relative flex-1">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Search className="w-4 h-4 text-white/30" />
+                         <Search className="w-4 h-4 text-white/30" aria-hidden="true" />
                       </div>
                       <input
                         type="text"
-                        className="w-full h-full min-h-[56px] pl-11 pr-4 bg-white/[0.03] border border-white/[0.08] rounded-xl focus:outline-none focus:border-[#58A6FF]/50 focus:bg-white/[0.06] premium-transition text-sm text-white placeholder-white/20 font-mono"
-                        placeholder="e.g. torvalds"
+                        name="github-username"
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="w-full h-full min-h-[56px] pl-11 pr-4 bg-white/[0.03] border border-white/[0.08] rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#58A6FF]/50 focus:border-[#58A6FF]/50 focus:bg-white/[0.06] premium-transition text-sm text-white placeholder-white/20 font-mono"
+                        placeholder="e.g. torvalds…"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         required
@@ -167,7 +170,7 @@ export default function Home() {
                           Generate Assessment
                         </span>
                         <div className="w-8 h-8 rounded-full bg-white/[0.06] group-hover:bg-white/[0.1] flex items-center justify-center premium-transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
-                          <ArrowUpRight className="w-4 h-4 text-white/60 group-hover:text-white premium-transition" />
+                          <ArrowUpRight className="w-4 h-4 text-white/60 group-hover:text-white premium-transition" aria-hidden="true" />
                         </div>
                       </div>
                     </button>

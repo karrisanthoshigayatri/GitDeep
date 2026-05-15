@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
             prompt: prompt,
             system: systemInstruction,
             stream: false,
-            options: { temperature: 0, num_ctx: 8192 },
+            options: { temperature: 0, num_ctx: 32768 },
             format: 'json'
           })
         });
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             { role: 'user', content: prompt }
           ],
           temperature: 0,
-          max_tokens: 8192,
+          max_tokens: 16384,
           response_format: { type: 'json_object' }
         })
       });
