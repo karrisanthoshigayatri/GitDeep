@@ -27,8 +27,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="en" className={`${display.variable} ${mono.variable}`}>
-      <body suppressHydrationWarning className="font-display bg-[#050505] text-[#C9D1D9] min-h-[100dvh] flex flex-col antialiased">
+    <html lang="en" className={`${display.variable} ${mono.variable}`} suppressHydrationWarning>
+      <body className="font-display bg-[#050505] text-[#C9D1D9] min-h-[100dvh] flex flex-col antialiased">
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-[#58A6FF]/[0.03] blur-[120px]" />
           <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#8957E5]/[0.03] blur-[120px]" />

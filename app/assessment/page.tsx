@@ -190,9 +190,12 @@ function AssessmentContent() {
           </h2>
           <p className="font-mono text-sm">{error}</p>
         </div>
-        <button onClick={() => router.push('/')} className="flex items-center gap-2 text-[#8B949E] hover:text-white font-medium transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Go Back
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.push('/')} className="flex items-center gap-2 text-[#8B949E] hover:text-white font-medium transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Go Back
+          </button>
+          <SettingsModal />
+        </div>
       </div>
     );
   }
@@ -491,11 +494,11 @@ function AssessmentContent() {
                     <div className="grid grid-cols-2 gap-4 mb-3">
                        <div className="flex items-center justify-between bg-[#161B22] border border-[#30363D] rounded p-2">
                         <span className="text-[#8B949E] text-[10px] uppercase">Confidence</span>
-                        <span className="text-[#58A6FF] text-xs font-bold">{assessment.behavioralAnalysis.confidenceScore}/100</span>
+                        <span className="text-[#58A6FF] text-xs font-bold">{assessment.behavioralAnalysis.confidenceScore}/10</span>
                        </div>
                        <div className="flex items-center justify-between bg-[#161B22] border border-[#30363D] rounded p-2">
                         <span className="text-[#8B949E] text-[10px] uppercase">Arrogance</span>
-                        <span className="text-[#F85149] text-xs font-bold">{assessment.behavioralAnalysis.arroganceScore}/100</span>
+                        <span className="text-[#F85149] text-xs font-bold">{assessment.behavioralAnalysis.arroganceScore}/10</span>
                        </div>
                     </div>
                     <p className="text-xs text-[#C9D1D9] mb-2"><strong>Archetype:</strong> {assessment.behavioralAnalysis.primaryArchetype}</p>
