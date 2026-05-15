@@ -280,7 +280,7 @@ function normalizeAssessment(raw: any): AssessmentResult {
     weaknessMetrics: m(raw.weaknessMetrics, { buzzwordDensity: 50, aiSlop: 50, lackOfDocs: 50, inconsistency: 50, arrogance: 50, poorArchitecture: 50 }) as AssessmentResult['weaknessMetrics'],
     slopeAnalysis: raw.slopeAnalysis ? { ...{ slopeTrajectory: 'Unknown', slopeScore: 5, consistencyRating: 'Unknown', analysisSummary: '', burnoutRisk: 'Unknown' }, ...raw.slopeAnalysis } : { slopeTrajectory: 'Unknown', slopeScore: 5, consistencyRating: 'Unknown', analysisSummary: '', burnoutRisk: 'Unknown' },
     buzzwordAnalysis: raw.buzzwordAnalysis ? { ...{ buzzwordsDetected: [], actualTechStack: [], buzzwordToRealityRatio: 5, verdict: '', roastOrPraise: '' }, ...raw.buzzwordAnalysis } : { buzzwordsDetected: [], actualTechStack: [], buzzwordToRealityRatio: 5, verdict: '', roastOrPraise: '' },
-    behavioralAnalysis: raw.behavioralAnalysis ? { ...{ confidenceScore: 50, arroganceScore: 50, primaryArchetype: 'Unknown', behavioralFlags: [], vibeCheck: '' }, ...raw.behavioralAnalysis } : { confidenceScore: 50, arroganceScore: 50, primaryArchetype: 'Unknown', behavioralFlags: [], vibeCheck: '' },
+    behavioralAnalysis: raw.behavioralAnalysis ? { ...{ confidenceScore: 5, arroganceScore: 5, primaryArchetype: 'Unknown', behavioralFlags: [], vibeCheck: '' }, ...raw.behavioralAnalysis } : { confidenceScore: 5, arroganceScore: 5, primaryArchetype: 'Unknown', behavioralFlags: [], vibeCheck: '' },
     hirabilityScore: typeof raw.hirabilityScore === 'number' ? raw.hirabilityScore : 5,
     hirabilityRoles: Array.isArray(raw.hirabilityRoles) ? raw.hirabilityRoles : [],
     notSuitedRoles: Array.isArray(raw.notSuitedRoles) ? raw.notSuitedRoles : [],
@@ -380,7 +380,7 @@ Please adhere to these overarching assessment logic rules:
       * TIER 3 (8-10) — STRONG: Multiple merged PRs in external repos, well-documented original projects, consistent activity over 6+ months, coherent tech stack matching bio claims, minimal slop.
     - LOGIC: The tier is determined by the presence or absence of 3 hard signals: (a) merged PRs in other people's repos, (b) original non-fork repos with READMEs, (c) >6 months of consistent activity. 0/3 = Tier 1, 1/3 = Tier 2, 2-3/3 = Tier 3. THEN fine-tune ±0.5 within the band based on subjective quality. This guarantees a deviation of at most 0.5 between evaluations.
     - CRITICAL: A score deviation of more than ±1.0 between two evaluations of the SAME profile is UNACCEPTABLE. The band system guarantees this. Do not override the bands.
-    - NEVER give a score of exactly 7.0. Skip it. Use 6.9 or 7.1 instead.
+    - NEVER give a score of exactly 7.0 for ANY field — hirabilityScore, repoAssessments[].repoScore, confidenceScore, arroganceScore, or any other numeric score. Use 6.9 or 7.1 instead. 7.0 is banned everywhere.
     - Do NOT let writing style, vibes, or subjective impressions affect the score. Only the 3-signal band logic above.
 
 17. MODE PARITY (CRITICAL): Your hirabilityScore, hirabilityRoles, notSuitedRoles, metrics, weaknessMetrics, swot, tags, slopeAnalysis, buzzwordAnalysis, behavioralAnalysis, growthMeter, timeline, summary, detailedReport, and repoAssessments MUST BE IDENTICAL regardless of mode. Do NOT change your assessment based on mode. The mode ONLY controls whether you populate the 'mentorshipPlan' field.
@@ -430,7 +430,7 @@ Rules:
 10. SWOT: 2-3 bullets each. Never empty. Opportunities = external market positioning, not self-improvement.
 11. Timeline phases from account creation. growthMeter 0-100.
 12. Hirability: Intern vs full-time levels. suitedRoles + notSuitedRoles.
-13. Score 1.0-10.0. Never 7.0. Tier: 1-4 WEAK, 5-6.9 AVERAGE, 7.1-10 STRONG.
+13. Score 1.0-10.0. Never 7.0 anywhere (hirabilityScore, repoScore, confidenceScore, arroganceScore — none can be 7.0). Use 6.9 or 7.1. Tier: 1-4 WEAK, 5-6.9 AVERAGE, 7.1-10 STRONG.
 14. Per-repo: Score 1-10, verdict, 1-sentence analysis. Keep detailedReport at account level.
 
 Mode: ${mode === 'employer' ? 'Brutally honest. No tips.' : 'Constructive. Add mentorshipPlan.'}
