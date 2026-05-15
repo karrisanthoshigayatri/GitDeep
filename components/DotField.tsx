@@ -129,6 +129,7 @@ const DotField = memo<DotFieldProps>(({
     let frameCount = 0;
 
     function tick() {
+      if (!ctx) return;
       frameCount++;
       const dots = dotsRef.current;
       const m = mouseRef.current;
@@ -145,9 +146,9 @@ const DotField = memo<DotFieldProps>(({
       glowOpacity.current += (eng - glowOpacity.current) * 0.08;
 
       if (glowEl) {
-        glowEl.setAttribute('cx', m.x);
-        glowEl.setAttribute('cy', m.y);
-        glowEl.style.opacity = glowOpacity.current;
+        glowEl.setAttribute('cx', String(m.x));
+        glowEl.setAttribute('cy', String(m.y));
+        glowEl.style.opacity = String(glowOpacity.current);
       }
 
       ctx.clearRect(0, 0, w, h);
