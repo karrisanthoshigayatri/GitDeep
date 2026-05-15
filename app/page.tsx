@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Briefcase, Code, HelpCircle, Settings, ArrowUpRight, Github } from 'lucide-react';
 import { SettingsModal } from '@/components/SettingsModal';
+import DotField from '@/components/DotField';
 import Image from 'next/image';
 import logo from './logo.png';
 
@@ -21,6 +22,18 @@ export default function Home() {
   return (
     <>
       <div className="grain" />
+      <div className="fixed inset-0 z-0">
+        <DotField
+          dotRadius={2.5}
+          dotSpacing={20}
+          bulgeStrength={110}
+          glowRadius={160}
+          sparkle={false}
+          waveAmplitude={0}
+          gradientFrom="rgba(138, 87, 229, 0.6)"
+          gradientTo="rgba(88, 166, 255, 0.5)"
+        />
+      </div>
       <div className="relative z-10 flex flex-col items-center justify-center min-h-[100dvh] px-4 py-8">
 
         {/* Floating Island Nav */}
