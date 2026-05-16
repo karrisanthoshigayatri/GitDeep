@@ -301,7 +301,7 @@ function normalizeAssessment(raw: any): AssessmentResult {
     metrics: m(raw.metrics, { creativity: 50, potential: 50, aiUsage: 50, security: 50, professionalism: 50, codeQuality: 50 }) as AssessmentResult['metrics'],
     weaknessMetrics: m(raw.weaknessMetrics, { buzzwordDensity: 50, aiSlop: 50, lackOfDocs: 50, inconsistency: 50, arrogance: 50, poorArchitecture: 50 }) as AssessmentResult['weaknessMetrics'],
     slopeAnalysis: raw.slopeAnalysis ? { ...{ slopeTrajectory: 'Unknown', slopeScore: 5, consistencyRating: 'Unknown', analysisSummary: '', burnoutRisk: 'Unknown' }, ...raw.slopeAnalysis } : { slopeTrajectory: 'Unknown', slopeScore: 5, consistencyRating: 'Unknown', analysisSummary: '', burnoutRisk: 'Unknown' },
-    buzzwordAnalysis: raw.buzzwordAnalysis ? { ...{ buzzwordsDetected: [], actualTechStack: [], buzzwordToRealityRatio: 5, verdict: '', roastOrPraise: '' }, ...raw.buzzwordAnalysis } : { buzzwordsDetected: [], actualTechStack: [], buzzwordToRealityRatio: 5, verdict: '', roastOrPraise: '' },
+    buzzwordAnalysis: raw.buzzwordAnalysis ? { ...{ buzzwordsDetected: [], actualTechStack: [], buzzwordToRealityRatio: 5, verdict: '', roastOrPraise: '' }, ...raw.buzzwordAnalysis, buzzwordToRealityRatio: Math.min(10, Math.max(0, typeof raw.buzzwordAnalysis?.buzzwordToRealityRatio === 'number' ? raw.buzzwordAnalysis.buzzwordToRealityRatio : 5)) } : { buzzwordsDetected: [], actualTechStack: [], buzzwordToRealityRatio: 5, verdict: '', roastOrPraise: '' },
     behavioralAnalysis: raw.behavioralAnalysis ? { ...{ confidenceScore: 5, arroganceScore: 5, primaryArchetype: 'Unknown', behavioralFlags: [], vibeCheck: '' }, ...raw.behavioralAnalysis } : { confidenceScore: 5, arroganceScore: 5, primaryArchetype: 'Unknown', behavioralFlags: [], vibeCheck: '' },
     hirabilityScore: typeof raw.hirabilityScore === 'number' ? raw.hirabilityScore : 5,
     hirabilityRoles: Array.isArray(raw.hirabilityRoles) ? raw.hirabilityRoles : [],
@@ -381,7 +381,7 @@ Before scoring anything, infer the developer's career stage from their account a
 
 1. **Slope Detection:** Calculate the trajectory of their career from account creation to recent activity. Options: Rising Star, Steady Maintainer, Declining Activity, or Sporadic/Spiky. Assess burnout risk based on activity volume and gaps.
 
-2. **Buzzword vs Reality:** Compare hype words (AI, LLM, Web3, Full-Stack, etc.) in bio/READMEs against the ACTUAL tech stack they write in (language stats + repo contents). Call it out directly — no softening. A bio claiming "AI Engineer" with only HTML/CSS repos is embarrassing and you should say so.
+2. **Buzzword vs Reality:** Compare hype words (AI, LLM, Web3, Full-Stack, etc.) in bio/READMEs against the ACTUAL tech stack they write in (language stats + repo contents). Call it out directly — no softening. A bio claiming "AI Engineer" with only HTML/CSS repos is embarrassing and you should say so. Rate buzzwordToRealityRatio on a 0–10 scale (0 = all talk, no substance; 10 = perfect match between claims and code). Never exceed 10.
 
 3. **Arrogance vs Confidence:** Analyze their vibe from PRs, READMEs, and bio. Confidence = assertive, constructive ("Please follow the contribution guidelines"). Arrogance = condescending, combative ("This is the ONLY correct way", gatekeeping). Assign behavioral flags. Don't soften toxic patterns.
 

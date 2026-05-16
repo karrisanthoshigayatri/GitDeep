@@ -280,11 +280,18 @@ function AssessmentContent() {
 
   if (!githubData || !assessment) return null;
 
-  // Language Chart data
+  // Language Chart data — bytes → estimated lines of code
+  const BYTES_PER_LINE: Record<string, number> = {
+    JavaScript: 45, TypeScript: 45, Python: 40, CSS: 35, HTML: 55, Java: 50,
+    C: 45, 'C++': 50, 'C#': 50, Go: 45, Rust: 45, Ruby: 40, PHP: 50,
+    Swift: 45, Kotlin: 45, Shell: 30, Markdown: 60, JSON: 55, YAML: 40,
+  };
+  const bytesToLoc = (bytes: number, lang: string) =>
+    Math.round(bytes / (BYTES_PER_LINE[lang] || 45));
   const COLORS = ['#F1E05A', '#3178C6', '#E34C26', '#563D7C', '#3572A5', '#B07219'];
   const langData = Object.keys(githubData.languages).map((key, index) => ({
     name: key,
-    value: githubData.languages[key],
+    value: bytesToLoc(githubData.languages[key], key),
     color: COLORS[index % COLORS.length]
   })).sort((a, b) => b.value - a.value).slice(0, 6); // Top 6
 
@@ -307,8 +314,8 @@ function AssessmentContent() {
   ];
 
   return (
-    <div className="flex-1 bg-[#0D1117] pb-20">
-      <header className="bg-[#161B22] border-b border-[#30363D] sticky top-0 z-40 shadow-md">
+    <div className="h-dvh flex flex-col bg-[#0D1117]">
+      <header className="bg-[#161B22] border-b border-[#30363D] shrink-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => router.push('/')} aria-label="Back to homepage" className="p-2 bg-[#21262D] border border-[#30363D] hover:bg-[#30363D] rounded-md transition-colors text-[#C9D1D9]">
@@ -350,10 +357,10 @@ function AssessmentContent() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+      <main className="flex-1 overflow-hidden max-w-7xl mx-auto w-full px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
         
         {/* Left Sidebar: Profile & Hirability */}
-        <aside className="lg:col-span-3 flex flex-col gap-6">
+        <aside className="lg:col-span-3 flex flex-col gap-6 overflow-y-auto overscroll-behavior-contain">
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-xl relative overflow-hidden group hover:border-[#8B949E] transition-colors">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#2EA043] via-[#58A6FF] to-[#8957E5]"></div>
             
@@ -472,7 +479,7 @@ function AssessmentContent() {
         </aside>
 
         {/* Center Main: Detailed Report & SWOT */}
-        <section className="lg:col-span-6 space-y-6">
+        <section className="lg:col-span-6 space-y-6 overflow-y-auto overscroll-behavior-contain">
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-2xl">
             <h2 className="text-lg font-bold text-white mb-2 font-mono uppercase tracking-widest"><Zap className="inline w-5 h-5 text-[#E3B341] pb-1" aria-hidden="true"/> Executive Summary</h2>
             <p className="text-[#C9D1D9] text-sm leading-relaxed mb-6">{assessment.summary}</p>
@@ -564,7 +571,7 @@ function AssessmentContent() {
                     <h3 className="text-sm font-bold text-[#E3B341] uppercase mb-3 flex items-center gap-2"><Zap className="w-4 h-4" aria-hidden="true"/> Buzzword vs Reality</h3>
                     <div className="flex justify-between items-center mb-3">
                       <span className="text-xs text-[#C9D1D9]"><strong>Verdict:</strong> {assessment.buzzwordAnalysis.verdict}</span>
-                      <span className="text-[10px] bg-[#161B22] border border-[#30363D] px-2 py-1 rounded">Ratio: {assessment.buzzwordAnalysis.buzzwordToRealityRatio > 10 ? (assessment.buzzwordAnalysis.buzzwordToRealityRatio / 10).toFixed(1) : parseFloat(assessment.buzzwordAnalysis.buzzwordToRealityRatio.toString()).toFixed(1)}/10</span>
+                      <span className="text-[10px] bg-[#161B22] border border-[#30363D] px-2 py-1 rounded">Ratio: {assessment.buzzwordAnalysis.buzzwordToRealityRatio.toFixed(1)}/10</span>
                     </div>
                     <p className="text-xs text-[#8B949E] italic mb-3">&quot;{assessment.buzzwordAnalysis.roastOrPraise}&quot;</p>
                     <div className="grid grid-cols-2 gap-4">
@@ -680,7 +687,7 @@ function AssessmentContent() {
         </section>
 
         {/* Right Sidebar: Radars & Langs & Ask */}
-        <aside className="lg:col-span-3 space-y-6 lg:sticky lg:top-24 lg:self-start">
+        <aside className="lg:col-span-3 space-y-6 overflow-y-auto overscroll-behavior-contain">
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-4 shadow-lg text-center">
             <h3 className="font-bold text-white text-xs uppercase mb-1 tracking-widest"><Shield className="w-4 h-4 inline pb-0.5 text-[#2EA043]" aria-hidden="true"/> Core Competencies</h3>
             <p className="text-[10px] text-[#8B949E] mb-2">Capabilities based on profile</p>
@@ -730,7 +737,7 @@ function AssessmentContent() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#161B22', borderColor: '#30363D', color: '#fff' }} formatter={(value: any) => { const b = Number(value); return [b >= 1000000 ? (b / 1000000).toFixed(1) + 'MB' : b >= 1000 ? (b / 1000).toFixed(1) + 'KB' : b + 'B', 'Bytes']; }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#161B22', borderColor: '#30363D', color: '#fff' }} formatter={(value: any) => { const n = Number(value); return [n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n), 'Lines']; }} />
                     <Legend wrapperStyle={{ fontSize: '10px', color: '#8B949E' }} />
                   </PieChart>
                 </ResponsiveContainer>
