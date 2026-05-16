@@ -174,6 +174,20 @@ For complete privacy and no API costs, run AI models locally:
 
 **Important**: Small models (< 7B parameters) produce inaccurate results including wrong scores, missing red flags, and useless analysis. Use cloud models or 7B+ local models for reliable assessments.
 
+### Custom Prompt for Ultra-Small Models
+
+If your local model is still too small even for the "Small" prompt size:
+
+1. **Clone the repository locally** (do NOT use the deployed website)
+2. Use an external LLM (ChatGPT, Claude, Gemini) to shorten the prompts in `lib/ai.ts`
+3. Find the `buildPrompt()` and `buildSmallPrompt()` functions
+4. Ask the LLM: "Condense this assessment prompt to 200 tokens while keeping core evaluation criteria"
+5. Replace the prompt strings in `lib/ai.ts` with the shortened versions
+6. Run `npm run dev` and test at `http://localhost:3000`
+7. **CRITICAL**: Do NOT deploy this modified version — it's for local testing only
+
+⚠️ **Warning**: Ultra-compressed prompts will produce significantly less accurate assessments. This is a last resort for experimentation only.
+
 ---
 
 ## 📖 How It Works

@@ -194,6 +194,21 @@ export default function HelpPage() {
               <li><strong className="text-[#E3B341]">Small:</strong> ~400 token instruction prompt. For weak local models only. <strong className="text-[#FF7B72]">Not suitable for employer mode</strong> — use only in developer mode if you have no other option.</li>
             </ul>
           </div>
+
+          <div className="bg-[#F85149]/10 border border-[#F85149]/30 rounded-lg p-4 mt-3">
+            <h4 className="text-[#FF7B72] font-bold mb-2 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Ultra-Small Models (Last Resort)</h4>
+            <p className="text-xs text-[#8B949E] mb-2">If your model is still too small even for the &quot;Small&quot; prompt:</p>
+            <ol className="text-xs text-[#8B949E] list-decimal list-inside space-y-1">
+              <li><strong className="text-white">Clone the repository</strong> to your local machine (do NOT use the deployed website)</li>
+              <li><strong className="text-white">Use an external LLM</strong> (ChatGPT, Claude, Gemini) to shorten the prompts in <code className="text-[#E3B341]">lib/ai.ts</code></li>
+              <li>Find the <code className="text-[#E3B341]">buildPrompt()</code> and <code className="text-[#E3B341]">buildSmallPrompt()</code> functions</li>
+              <li>Ask the LLM: <em className="text-[#58A6FF]">&quot;Condense this assessment prompt to 200 tokens while keeping core evaluation criteria&quot;</em></li>
+              <li>Replace the prompt strings in <code className="text-[#E3B341]">lib/ai.ts</code> with shortened versions</li>
+              <li>Run <code className="text-[#E3B341]">npm run dev</code> and test at <code className="text-[#E3B341]">http://localhost:3000</code></li>
+              <li><strong className="text-[#FF7B72]">CRITICAL:</strong> Do NOT deploy this modified version — local testing only</li>
+            </ol>
+            <p className="text-[10px] text-[#FF7B72] mt-2 font-bold">⚠️ Warning: Ultra-compressed prompts produce significantly less accurate assessments. This is for experimentation only.</p>
+          </div>
         </div>
       )
     },
