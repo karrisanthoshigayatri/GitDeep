@@ -366,7 +366,7 @@ function AssessmentContent() {
             
             <div className="mb-4 pb-4 border-b border-[#30363D]">
               <span className="text-[10px] text-[#8B949E] font-bold uppercase tracking-widest block mb-1">GitHub Bio</span>
-              <p className="text-xs text-[#C9D1D9] italic line-clamp-4">
+              <p className="text-xs text-[#C9D1D9] italic">
                 {githubData.bio ? `"${githubData.bio}"` : "No bio provided."}
               </p>
             </div>
