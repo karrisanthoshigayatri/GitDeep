@@ -9,7 +9,7 @@
 ### [🚀 Try GitDeep Live →](https://gitdeep.vercel.app)
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-gitdeep.vercel.app-58A6FF?style=for-the-badge)](https://gitdeep.vercel.app)
-[![License](https://img.shields.io/badge/License-MIT-2EA043?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 
 </div>
