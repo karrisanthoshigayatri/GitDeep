@@ -378,7 +378,7 @@ GitDeep/
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details. Any distributed modifications must remain open-source under the same terms.
 
 ---
 
