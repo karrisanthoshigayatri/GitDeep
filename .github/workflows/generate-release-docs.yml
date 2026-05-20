@@ -1,0 +1,64 @@
+name: Automate Version Documentation
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          # CRITICAL: Forces the pipeline onto the live branch to prevent the detached HEAD state
+          ref: main
+          token: ${{ secrets.RELEASE_DOCS_PAT }}
+          fetch-depth: 0
+
+      - name: Build Documentation Engine
+        env:
+          RELEASE_BODY: ${{ github.event.release.body }}
+          VERSION_TAG: ${{ github.ref_name }}
+        run: |
+          # Create the folder if it doesn't exist
+          mkdir -p version
+          
+          # Generate the individual version log
+          echo "# GitDeep Documentation — $VERSION_TAG" > "version/$VERSION_TAG.md"
+          echo "" >> "version/$VERSION_TAG.md"
+          echo "$RELEASE_BODY" >> "version/$VERSION_TAG.md"
+          
+          # Rebuild the documentation master index
+          cat << 'EOF' > version/README.md
+          # GitDeep Release Documentation
+          
+          This directory tracks the history of all project releases.
+          
+          EOF
+          
+          # Find all version files, sort them cleanly, and create markdown links
+          ls -1 version/v*.md | grep -v README | sort -rV | while read file; do
+            filename=$(basename "$file")
+            echo "* [$filename]($filename)" >> version/README.md
+          done
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Synchronize local tracking history before attempting a push
+          git checkout main
+          git pull origin main --rebase
+          
+          git add version/
+          
+          # Only commit and push if the generated documentation actually changed things
+          if ! git diff --quiet || ! git diff --staged --quiet; then
+            git commit -m "docs(release): auto-generate docs for $VERSION_TAG"
+            git push origin main
+          fi
