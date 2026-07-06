@@ -53,26 +53,96 @@ export interface UserAssessmentData {
   languages: Record<string, number>;
 }
 
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+interface CacheEntry {
+  data: UserAssessmentData;
+  timestamp: number;
+}
+
+function getCachedProfile(username: string): UserAssessmentData | null {
+  try {
+    const raw = sessionStorage.getItem(`github-profile-${username}`);
+    if (!raw) return null;
+    const entry: CacheEntry = JSON.parse(raw);
+    if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+      sessionStorage.removeItem(`github-profile-${username}`);
+      return null;
+    }
+    return entry.data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedProfile(username: string, data: UserAssessmentData): void {
+  try {
+    const entry: CacheEntry = { data, timestamp: Date.now() };
+    sessionStorage.setItem(`github-profile-${username}`, JSON.stringify(entry));
+  } catch {
+    // sessionStorage full or unavailable — skip caching
+  }
+}
+
+async function checkRateLimit(octokit: Octokit): Promise<{ remaining: number; limit: number; reset: Date } | null> {
+  try {
+    const { data } = await octokit.rest.rateLimit.get();
+    const core = data.resources.core;
+    return { remaining: core.remaining, limit: core.limit, reset: new Date(core.reset * 1000) };
+  } catch {
+    return null; // rate limit endpoint itself can fail (e.g. on older GitHub Enterprise)
+  }
+}
+
+function extractUrl(text: string, domain: string): string {
+  const patterns = [
+    new RegExp(`https?://(?:www\\.)?${domain}\\/[^\\s,)]+`, 'i'),
+    new RegExp(`(?:https?://)?(?:www\\.)?${domain}\\/[^\\s,)]+`, 'i'),
+  ];
+  for (const pat of patterns) {
+    const m = text.match(pat);
+    if (m) {
+      let url = m[0];
+      if (!url.startsWith('http')) url = `https://${url}`;
+      return url;
+    }
+  }
+  return '';
+}
+
+/** Friendly error suggesting a GitHub PAT when likely rate limited. */
+function makeRateLimitError(originalMessage: string): Error {
+  const msg = `GitHub API rate limit reached. ${originalMessage}\n\nTo analyze more profiles, add a GitHub Personal Access Token in Settings → GitHub PAT Token (5000 req/hr instead of 60).`;
+  return new Error(msg);
+}
+
 export async function fetchGitHubProfile(username: string, token: string): Promise<UserAssessmentData> {
+  // 0. Check sessionStorage cache first
+  const cached = getCachedProfile(username);
+  if (cached) {
+    return cached;
+  }
+
   const octokit = new Octokit({ auth: token || undefined });
 
-  // 1. Fetch user profile
-  const { data: user } = await octokit.rest.users.getByUsername({ username });
+  // 0b. Check remaining rate limit early (best-effort)
+  const rateInfo = await checkRateLimit(octokit);
+  const isLowOnRequests = rateInfo && rateInfo.remaining < 10;
+  if (isLowOnRequests) {
+    console.warn(
+      `⚠ GitHub API rate limit: ${rateInfo!.remaining}/${rateInfo!.limit} remaining (resets at ${rateInfo!.reset.toLocaleTimeString()}). ` +
+      'Consider adding a GitHub PAT token in Settings for higher limits.'
+    );
+  }
 
-  function extractUrl(text: string, domain: string): string {
-    const patterns = [
-      new RegExp(`https?://(?:www\\.)?${domain}\\/[^\\s,)]+`, 'i'),
-      new RegExp(`(?:https?://)?(?:www\\.)?${domain}\\/[^\\s,)]+`, 'i'),
-    ];
-    for (const pat of patterns) {
-      const m = text.match(pat);
-      if (m) {
-        let url = m[0];
-        if (!url.startsWith('http')) url = `https://${url}`;
-        return url;
-      }
-    }
-    return '';
+  // 1. Fetch user profile
+  let user;
+  try {
+    const { data } = await octokit.rest.users.getByUsername({ username });
+    user = data;
+  } catch (err: any) {
+    if (err.status === 403 || err.status === 429) throw makeRateLimitError(err.message);
+    throw new Error(`Failed to fetch GitHub profile: ${err.message}`);
   }
 
   const bioText = [user.blog || '', user.bio || ''].join(' ');
@@ -86,32 +156,29 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
   }
 
   // 2. Fetch repos
-  const { data: reposRaw } = await octokit.rest.repos.listForUser({
-    username,
-    per_page: 100,
-    sort: 'pushed',
-  });
+  let reposRaw;
+  try {
+    const { data } = await octokit.rest.repos.listForUser({
+      username,
+      per_page: 100,
+      sort: 'pushed',
+    });
+    reposRaw = data;
+  } catch (err: any) {
+    if (err.status === 403 || err.status === 429) throw makeRateLimitError(err.message);
+    throw new Error(`Failed to fetch repositories: ${err.message}`);
+  }
 
   const repos: RepoData[] = [];
-  const languageBytes: Record<string, number> = {};
+  // Aggregate languages from repo list metadata (zero additional API calls)
+  const languageCounts: Record<string, number> = {};
   const reposToAssess = reposRaw.filter(r => !r.fork).slice(0, 15);
   const totalStars = reposToAssess.reduce((acc, r) => acc + (r.stargazers_count || 0), 0);
 
   for (const r of reposToAssess) {
-    // Fetch actual language byte counts per repo for accurate distribution
-    try {
-      const { data: langs } = await octokit.rest.repos.listLanguages({
-        owner: username,
-        repo: r.name,
-      });
-      for (const [lang, bytes] of Object.entries(langs)) {
-        languageBytes[lang] = (languageBytes[lang] || 0) + bytes;
-      }
-    } catch {
-      // fallback: use primary language with a nominal byte count
-      if (r.language) {
-        languageBytes[r.language] = (languageBytes[r.language] || 0) + 1;
-      }
+    // Use r.language from the repo list — no extra API call needed
+    if (r.language) {
+      languageCounts[r.language] = (languageCounts[r.language] || 0) + 1;
     }
 
     let readmeContent = '';
@@ -154,7 +221,6 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
   const prs: PRData[] = [];
   let totalPrs = 0;
   try {
-    // We fetch a few PRs even without a token (Search API has 10 req/min for unauth, 30 req/min for auth)
     const q = `is:pr author:${username} is:merged`;
     const { data: searchPrs } = await octokit.rest.search.issuesAndPullRequests({
       q,
@@ -166,7 +232,6 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
     totalPrs = searchPrs.total_count || 0;
 
     for (const item of searchPrs.items) {
-      // the api returns something like https://api.github.com/repos/vercel/next.js
       const repoUrlParts = item.repository_url.split('/');
       const repoName = repoUrlParts.slice(-2).join('/');
       
@@ -181,11 +246,15 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
         linesDeleted: 0,
       });
     }
-  } catch (e) {
-    console.warn("Failed to fetch PRs", e);
+  } catch (e: any) {
+    if (e.status === 403 || e.status === 429) {
+      console.warn("PR search rate limited — continuing without PR data. Add a GitHub PAT for higher limits.");
+    } else {
+      console.warn("Failed to fetch PRs", e);
+    }
   }
 
-  return {
+  const result: UserAssessmentData = {
     username: user.login,
     name: user.name || '',
     avatarUrl: user.avatar_url,
@@ -207,6 +276,13 @@ export async function fetchGitHubProfile(username: string, token: string): Promi
     totalPrs,
     repos,
     pullRequests: prs,
-    languages: languageBytes,
+    languages: languageCounts,
   };
+
+  // 4. Cache the result
+  if (typeof sessionStorage !== 'undefined') {
+    setCachedProfile(username, result);
+  }
+
+  return result;
 }

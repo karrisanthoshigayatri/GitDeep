@@ -280,18 +280,11 @@ function AssessmentContent() {
 
   if (!githubData || !assessment) return null;
 
-  // Language Chart data — bytes → estimated lines of code
-  const BYTES_PER_LINE: Record<string, number> = {
-    JavaScript: 45, TypeScript: 45, Python: 40, CSS: 35, HTML: 55, Java: 50,
-    C: 45, 'C++': 50, 'C#': 50, Go: 45, Rust: 45, Ruby: 40, PHP: 50,
-    Swift: 45, Kotlin: 45, Shell: 30, Markdown: 60, JSON: 55, YAML: 40,
-  };
-  const bytesToLoc = (bytes: number, lang: string) =>
-    Math.round(bytes / (BYTES_PER_LINE[lang] || 45));
+  // Language Chart — data from repo primary language metadata (zero API calls)
   const COLORS = ['#F1E05A', '#3178C6', '#E34C26', '#563D7C', '#3572A5', '#B07219'];
   const langData = Object.keys(githubData.languages).map((key, index) => ({
     name: key,
-    value: bytesToLoc(githubData.languages[key], key),
+    value: githubData.languages[key],
     color: COLORS[index % COLORS.length]
   })).sort((a, b) => b.value - a.value).slice(0, 6); // Top 6
 
@@ -737,7 +730,7 @@ function AssessmentContent() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#161B22', borderColor: '#30363D', color: '#fff' }} formatter={(value: any) => { const n = Number(value); return [n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n), 'Lines']; }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#161B22', borderColor: '#30363D', color: '#fff' }} formatter={(value: any) => { const n = Number(value); return [n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n) + ' repo' + (n === 1 ? '' : 's'), 'Repos']; }} />
                     <Legend wrapperStyle={{ fontSize: '10px', color: '#8B949E' }} />
                   </PieChart>
                 </ResponsiveContainer>
