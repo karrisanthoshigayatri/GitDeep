@@ -74,24 +74,23 @@ export function useLoadingMessage(
   intervalMs = 2200,
 ): string {
   const [index, setIndex] = useState(0);
-  const orderRef = useRef<string[]>([]);
+  const shuffled = useMemo(() => shuffle(messages), [messages]);
 
-  // (Re)shuffle whenever the message set identity changes.
+  // Reset index when the message set changes.
   useEffect(() => {
-    orderRef.current = shuffle(messages);
     setIndex(0);
-  }, [messages]);
+  }, [shuffled]);
 
+  // Handle the rotation interval.
   useEffect(() => {
-    if (orderRef.current.length === 0) return;
-    if (orderRef.current.length === 1) return; // nothing to cycle.
+    if (shuffled.length <= 1) return; // nothing to cycle.
 
     const id = setInterval(() => {
-      setIndex((prev) => (prev + 1) % orderRef.current.length);
+      setIndex((prev) => (prev + 1) % shuffled.length);
     }, intervalMs);
 
     return () => clearInterval(id);
-  }, [intervalMs]);
+  }, [shuffled, intervalMs]);
 
-  return orderRef.current[index] ?? "";
+  return shuffled[index] ?? shuffled[0] ?? "";
 }
