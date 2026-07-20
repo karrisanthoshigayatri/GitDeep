@@ -29,7 +29,11 @@ export function AiLoadingNote({
 
   if (variant === "inline") {
     return (
-      <div className={`flex flex-col items-center justify-center gap-4 text-center ${className}`}>
+      <div
+        role="status"
+        aria-live="polite"
+        className={`flex flex-col items-center justify-center gap-4 text-center ${className}`}
+      >
         <Loader2 className="w-10 h-10 text-[#8B949E] animate-spin" aria-hidden="true" />
         <div className="font-mono text-sm text-[#8B949E] min-h-[1.25rem] animate-pulse">
           {message}
