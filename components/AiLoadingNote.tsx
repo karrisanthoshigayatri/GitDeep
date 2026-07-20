@@ -40,7 +40,7 @@ export function AiLoadingNote({
         </div>
       </div>
     );
-  }
+ }
 
   return (
     <div
