@@ -136,3 +136,14 @@ html::-webkit-scrollbar-thumb:hover {
 .btn-press:active {
   transform: scale(0.97);
 }
+
+/* ── AI loading note animations (Feature #7) ── */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

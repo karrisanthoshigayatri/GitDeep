@@ -7,6 +7,7 @@ import { generateAssessment, AssessmentMode, AssessmentResult, compareCandidates
 import { useStore } from '@/lib/store';
 import { SettingsModal } from '@/components/SettingsModal';
 import { ArrowLeft, Loader2, Send, Linkedin, Twitter, Target, Zap, Shield, AlertTriangle, Code2, Instagram, ExternalLink, GitCompare, X, Check, HelpCircle } from 'lucide-react';
+import { AiLoadingNote } from '@/components/AiLoadingNote';
 import ReactMarkdown from 'react-markdown';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 
@@ -194,6 +195,10 @@ function AssessmentContent() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* AI is running… fun rotating one-liner */}
+          <div className="col-span-1 lg:col-span-12">
+            <AiLoadingNote />
+          </div>
           {/* Left skeleton */}
           <aside className="lg:col-span-3 space-y-6">
             <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-xl">
@@ -1011,8 +1016,8 @@ function AssessmentContent() {
 export default function Assessment() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0D1117] flex justify-center items-center">
-        <Loader2 className="w-12 h-12 text-[#8B949E] animate-spin" />
+      <div className="min-h-screen bg-[#0D1117] flex justify-center items-center px-4">
+        <AiLoadingNote variant="inline" />
       </div>
     }>
       <AssessmentContent />
