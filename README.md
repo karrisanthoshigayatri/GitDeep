@@ -178,22 +178,23 @@ Choose a model based on your available resources and desired assessment depth. A
 
 ### Cloud Models (Recommended)
 
-| Model | Provider | Prompt Size | Employer Mode | Notes |
-|---|---|---|---|---|
-| Gemini 2.5 Flash | Google | Full | ✅ Yes | Best overall — free tier available |
-| GPT-4o | OpenAI | Full | ✅ Yes | Premium option, high accuracy |
-| Claude Sonnet 4 | Anthropic | Full | ✅ Yes | Premium option, strong reasoning |
+| Model | Provider | Prompt Size | Employer Mode | Status | Notes |
+|---|---|---|---|---|---|
+| Gemini 2.5 Flash | Google | Full | ✅ Yes | ✅ Working | Best overall — free tier available |
+| GPT-4o | OpenAI | Full | ✅ Yes | ✅ Working | Premium option, high accuracy |
+| Claude Sonnet 4 | Anthropic | Full | ✅ Yes | ✅ Working | Premium option, strong reasoning |
 
 ### Local Models (via Ollama)
 
-| Model | Min RAM | Prompt Size | Employer Mode | Notes |
-|---|---|---|---|---|
-| Llama 3.1 8B | 16 GB | Full | ✅ Yes | Strong local option |
-| Gemma 2 9B | 16 GB | Full | ✅ Yes | Strong local option |
-| Qwen 2.5 7B | 8 GB | Full | ✅ Yes | Best balance for 8GB systems |
-| Mistral 7B | 8 GB | Full | ✅ Yes | Solid mid-tier alternative |
-| Phi-3 | 4 GB | Small | ❌ No | Limited accuracy |
-| Llama 3.2 3B | 4 GB | Small | ❌ No | Limited accuracy |
+| Model | Min RAM | Prompt Size | Employer Mode | Status | Notes |
+|---|---|---|---|---|---|
+| Llama 3.1 8B | 16 GB | Full | ✅ Yes | ✅ Working | Strong local option |
+| Gemma 2 9B | 16 GB | Full | ✅ Yes | ✅ Working | Strong local option |
+| Qwen 2.5 7B | 8 GB | Full | ✅ Yes | ✅ Working | Best balance for 8GB systems |
+| Mistral 7B | 8 GB | Full | ✅ Yes | ✅ Working | Solid mid-tier alternative |
+| Phi-3 Mini | 4 GB | Small | ❌ No | ⚠️ Partial | Produces shallow output; use Small prompt |
+| Llama 3.2 3B | 4 GB | Small | ❌ No | ⚠️ Partial | Often omits SWOT/red-flags sections |
+| Llama 3.2 1B | 4 GB | Small | ❌ No | ❌ Not Working | Consistently returns malformed JSON |
 
 ### Not Recommended
 
@@ -201,8 +202,98 @@ Choose a model based on your available resources and desired assessment depth. A
 |---|---|
 | Phi-1 | Too small — produces unreliable output |
 | TinyLlama | Too small — produces unreliable output |
+| Llama 3.2 1B | Returns broken/empty JSON even on Small prompt |
 
 > **Important:** Models under 7B parameters produce inaccurate results, including wrong scores, missing red flags, and shallow analysis. Use a cloud model or a 7B+ local model for reliable assessments.
+
+---
+
+## 🔬 Ollama & Small Model Testing Observations
+
+> **Contributed by [@karrisanthoshigayatri](https://github.com/karrisanthoshigayatri) — ECSoC'26**
+
+This section documents real-world observations from testing GitDeep with Ollama and various smaller models. Results are based on analyzing the same public GitHub profile across all models to ensure a fair comparison.
+
+### How GitDeep Talks to Ollama
+
+GitDeep uses a **two-stage connection strategy** (`app/api/ai/route.ts`):
+
+1. **Primary**: Tries the OpenAI-compatible endpoint (`/v1/chat/completions`) — works with Ollama v0.2+
+2. **Fallback**: If that fails, retries via Ollama's native `/api/generate` endpoint with `format: 'json'` forced
+
+This means GitDeep is resilient to Ollama version differences, but you should still keep Ollama up to date for best results.
+
+### Prompt Size — Why It Matters for Local Models
+
+GitDeep offers two prompt sizes (configurable in Settings):
+
+| Setting | Token Count | Best For |
+|---|---|---|
+| Full | ~1200 tokens | Cloud models, 7B+ local models |
+| Small | ~400 tokens | 3B–6B local models |
+
+**Always use Small prompt for models under 7B.** Full prompt on a 3B model causes incomplete responses and JSON truncation, which breaks the assessment parser entirely.
+
+### Model-by-Model Results
+
+#### ✅ `qwen2.5:7b` — **Recommended for local use**
+- Both Employer and Developer modes produce structured, complete output
+- SWOT, hirability score, per-repo scoring, and red flags all populate correctly
+- Response time: ~45–90 seconds on a mid-range GPU (RTX 3060 or similar)
+- Minor hallucination risk on low-data profiles (accounts with <5 repos)
+- **Use Full prompt**
+
+#### ✅ `mistral:7b` — **Solid alternative**
+- Produces well-structured output in both modes
+- Slightly weaker on behavioral analysis compared to Qwen 2.5
+- Occasionally gives a score of exactly 7.0 (the prompt explicitly tells it not to — small models sometimes ignore this instruction)
+- Response time: ~50–100 seconds
+- **Use Full prompt**
+
+#### ✅ `llama3.1:8b` — **Good, but slow**
+- Assessment quality is good; handles the full prompt reliably
+- Noticeably slower than Qwen 2.5 or Mistral on equivalent hardware
+- Works best on 16 GB RAM systems; may swap on 8 GB
+- **Use Full prompt**
+
+#### ⚠️ `phi3:mini` — **Partial / use with caution**
+- Only use with Small prompt — the full prompt causes truncated JSON output
+- Hirability score and basic career slope do appear in output
+- SWOT analysis is shallow (1-line entries instead of detailed bullets)
+- Red flags section frequently empty even for obviously problematic profiles
+- Behavioral analysis section is missing or generic
+- **Use Small prompt only; do not rely on Employer Mode results**
+
+#### ⚠️ `llama3.2:3b` — **Partial / unreliable for assessments**
+- Completes the request but frequently omits entire sections (SWOT, red flags, per-repo scores)
+- Score output is present but reasoning is thin
+- Developer mode (mentorship) works better than Employer mode at this size
+- Occasionally returns plain text instead of JSON, causing a parse failure
+- **Use Small prompt; expect incomplete assessments**
+
+#### ❌ `llama3.2:1b` — **Not working**
+- Returns malformed or empty JSON on both Full and Small prompts
+- Assessment page shows a parse error / blank result
+- Not recommended at all — the model is simply too small to follow the structured output instruction
+
+### Key Takeaways
+
+- **7B is the minimum viable size** for a usable GitDeep assessment. Below that, JSON compliance breaks down and sections are silently dropped.
+- The **Small prompt mode** is a meaningful improvement for 3B–6B models — it at least gets a parseable response — but output quality is still noticeably worse than 7B+.
+- **Ollama's OpenAI-compatible endpoint** (`/v1/chat/completions`) works out of the box with recent Ollama versions. The native `/api/generate` fallback ensures older installs still connect.
+- **Response times** can reach 2–3 minutes on CPU-only setups even for 7B models. The app has a built-in 150-second timeout — if you're on CPU, switch to a cloud model or the Small prompt.
+- **Groq (cloud)** is a practical middle ground if you want Llama/Mistral quality without local hardware requirements — it's free-tier, fast, and uses the same OpenAI-compatible format.
+
+### Troubleshooting Ollama
+
+| Symptom | Likely Cause | Fix |
+|---|---|---|
+| "Ollama request timed out after 150s" | Model too slow / prompt too large | Switch to Small prompt or a faster model |
+| Blank assessment / parse error | Model returned non-JSON text | Use a 7B+ model; enable Small prompt for smaller ones |
+| "Ollama API error (404)" | Model not pulled yet | Run `ollama pull <model-name>` |
+| "Ollama API error (500)" | Ollama server not running | Run `ollama serve` in a terminal |
+| Missing SWOT / red flags sections | Model too small to follow full instruction | Use Small prompt; upgrade to 7B model |
+| Score is exactly 7.0 | Model ignoring the "never exactly 7.0" instruction | Known quirk of smaller models; use 7B+ for reliable scoring |
 
 ### Custom Prompt for Ultra-Small Models
 
